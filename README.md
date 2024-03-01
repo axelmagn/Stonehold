@@ -11,14 +11,12 @@ An action game about escaping a dungeon
 - This project targets WASM: `rustup target add wasm32-unknown-unknown`
 - I run my dev server with cargo watch and basic-http-server: `cargo install cargo-watch basic-http-server`
 
-## Building
+## Running on Dev Server
 
-```
-cargo build
-```
-
-## Dev Server
+You can use cargo watch to rebuild and restart the dev server on every change.
 
 ```
 cargo watch -x build -s basic-http-server
 ```
+
+Navigate to localhost:4000 to test.
