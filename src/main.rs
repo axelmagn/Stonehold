@@ -2,6 +2,7 @@ use game::Game;
 
 mod constants;
 mod game;
+mod player;
 
 #[macroquad::main("Stonehold")]
 async fn main() {
