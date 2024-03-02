@@ -1,30 +1,42 @@
 use crate::{
-    constants::{PLAYER_SPRITE_ID, TILESET_MAP_PATH, TILESET_TEXTURE_PATH, TILE_MAP_JSON_PATH},
+    constants::{
+        PLAYER_SPRITE_ID, SIMULATED_RESOLUTION, TILESET_MAP_PATH, TILESET_TEXTURE_PATH,
+        TILE_MAP_JSON_PATH,
+    },
     player::Player,
 };
 use anyhow::Result;
 use futures::try_join;
 use macroquad::{
-    camera::set_default_camera,
+    camera::{set_camera, set_default_camera, Camera2D},
     color::DARKGRAY,
     file::load_string,
     math::Rect,
-    texture::{load_texture, FilterMode},
+    texture::{load_texture, render_target, FilterMode, RenderTarget},
     window::{clear_background, next_frame, screen_height, screen_width},
 };
 use macroquad_tiled::{load_map, Map};
 
 pub struct Game {
-    /// map of dungeon tiles
     tile_map: Map,
     player: Player,
+    render_target: RenderTarget,
+
+    /// Worldspace camera
+    world_camera: Camera2D,
 }
 
 impl Game {
     pub fn new(tile_map: Map) -> Self {
+        // TODO(axelmagn): factory methods for render target and camera
+        let render_target = render_target(SIMULATED_RESOLUTION.x, SIMULATED_RESOLUTION.y);
+        render_target.texture.set_filter(FilterMode::Nearest);
+
         Self {
             tile_map,
             player: Player::new(),
+            render_target,
+            world_camera: Camera2D::default(),
         }
     }
 
@@ -56,8 +68,9 @@ impl Game {
 
     fn draw(&self) {
         clear_background(DARKGRAY);
-        // TODO(axelmagn): custom camera
+
         set_default_camera();
+        // set_camera(&Camera2D::default());
 
         // draw map
         self.tile_map.draw_tiles(

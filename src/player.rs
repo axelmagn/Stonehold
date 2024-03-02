@@ -1,7 +1,7 @@
 use macroquad::math::{Rect, Vec2};
 use macroquad_tiled::Map;
 
-use crate::constants::{PLAYER_SPRITE_ID, TILESET_MAP_ID, TILESET_MAP_PATH, TILE_SIZE};
+use crate::constants::{PLAYER_SPRITE_ID, TILESET_MAP_ID, TILE_SIZE};
 
 pub struct Player {
     pub position: Vec2,
