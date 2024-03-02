@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.80"
+futures = "0.3.30"
 macroquad = "0.4.5"
 macroquad-tiled = "0.2.0"
 ncollide2d = "0.33.0"
