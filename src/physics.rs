@@ -1,19 +1,21 @@
+use macroquad::time::get_frame_time;
 use rapier2d::{
     dynamics::{
         CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet,
-        RigidBodySet,
+        RigidBodyHandle, RigidBodySet,
     },
-    geometry::{BroadPhase, ColliderSet, NarrowPhase},
+    geometry::{BroadPhase, ColliderHandle, ColliderSet, NarrowPhase},
     math::{Real, Vector},
     pipeline::{PhysicsPipeline, QueryPipeline},
 };
 
+/// Game physics manager
 #[derive(Default)]
 pub struct Physics {
     pub bodies: RigidBodySet,
     pub colliders: ColliderSet,
 
-    // simulation structures - generally unused
+    // simulation structures - generally not fussed with much
     pub gravity: Vector<Real>,
     pub integration_params: IntegrationParameters,
     pub physics_pipeline: PhysicsPipeline,
@@ -28,6 +30,8 @@ pub struct Physics {
 
 impl Physics {
     pub fn step(&mut self) {
+        self.integration_params.dt = get_frame_time();
+
         self.physics_pipeline.step(
             &self.gravity,
             &self.integration_params,

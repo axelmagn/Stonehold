@@ -718,6 +718,7 @@ dependencies = [
  "futures",
  "macroquad",
  "macroquad-tiled",
+ "nalgebra",
  "rapier2d",
 ]
 

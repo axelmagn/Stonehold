@@ -12,6 +12,9 @@ pub struct Cameras {
     /// Worldspace camera (tile units, render_target)
     pub world_camera: Camera2D,
 
+    /// Worldspace camera (simulated pixel, render_target)
+    pub ui_camera: Camera2D,
+
     /// Screenspace camera (screen pixel units)
     pub screen_camera: Camera2D,
 }
@@ -20,6 +23,7 @@ impl Cameras {
     pub fn new() -> Self {
         Self {
             world_camera: create_world_camera(),
+            ui_camera: create_ui_camera(),
             screen_camera: create_screen_camera(),
         }
     }
@@ -50,6 +54,24 @@ impl Cameras {
             },
         )
     }
+
+    pub fn draw_ui_render_to_screen(&self) {
+        draw_texture_ex(
+            &self
+                .ui_camera
+                .render_target
+                .as_ref()
+                .expect("world camera missing render target")
+                .texture,
+            0.,
+            0.,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(1., 1.)),
+                ..Default::default()
+            },
+        )
+    }
 }
 
 /// Create a world camera, zoomed to a world space where 1 unit = 1 tile.
@@ -66,6 +88,21 @@ pub fn create_world_camera() -> Camera2D {
     }
 }
 
+/// Create a UI camera, zoomed to simulated resolution
+pub fn create_ui_camera() -> Camera2D {
+    let render_target = render_target(SIMULATED_RESOLUTION.x, SIMULATED_RESOLUTION.y);
+    render_target.texture.set_filter(FilterMode::Nearest);
+    let width = SIMULATED_RESOLUTION.x as f32;
+    let height = SIMULATED_RESOLUTION.y as f32;
+    Camera2D {
+        target: vec2(width / 2., height / 2.),
+        zoom: vec2(2. / width, 2. / height),
+        render_target: Some(render_target),
+        ..Default::default()
+    }
+}
+
+/// Create a screen camera, which scales up and letterboxes the world camera.
 pub fn create_screen_camera() -> Camera2D {
     let world_aspect = SIMULATED_RESOLUTION.x as f32 / SIMULATED_RESOLUTION.y as f32;
     let screen_aspect = screen_width() / screen_height();

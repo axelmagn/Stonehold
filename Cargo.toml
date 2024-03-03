@@ -5,9 +5,18 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# Enable max optimizations for dependencies, but not for our code
+[profile.dev.package."*"]
+opt-level = 3
+
+# Enable only a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
 [dependencies]
 anyhow = "1.0.80"
 futures = "0.3.30"
 macroquad = "0.4.5"
 macroquad-tiled = "0.2.0"
+nalgebra = "0.32.4"
 rapier2d = "0.18.0"
