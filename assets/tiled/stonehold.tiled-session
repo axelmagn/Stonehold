@@ -13,14 +13,15 @@
             "scaleInDock": 1.5
         },
         "sandbox01.tmx": {
-            "scale": 1.55859375,
+            "scale": 0.8338,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 346.14536340852135,
-                "y": 381.1127819548872
+                "x": 313.02470616454787,
+                "y": 217.07843607579753
             }
         },
         "sandbox01.tmx#tiny_dungeon": {
+            "scaleInDock": 1,
             "scaleInEditor": 5.5
         },
         "tiny_dungeon.tmx": {
@@ -49,14 +50,13 @@
     "map.tileWidth": 16,
     "map.width": 64,
     "openFiles": [
-        "sandbox01.tmx",
-        "tiny_dungeon.tsx"
+        "sandbox01.tmx"
     ],
     "project": "stonehold.tiled-project",
     "property.type": "bool",
     "recentFiles": [
-        "tiny_dungeon.tsx",
         "sandbox01.tmx",
+        "tiny_dungeon.tsx",
         "tiny_dungeon.tmx"
     ],
     "tileset.embedInMap": true,
