@@ -3,7 +3,7 @@ use macroquad::{
     math::{vec2, Rect, Vec2},
     time::get_frame_time,
 };
-use macroquad_tiled::Map;
+use macroquad_tiled::Map as TiledMap;
 
 use crate::constants::{PLAYER_SPRITE_ID, TILESET_MAP_ID};
 
@@ -59,7 +59,7 @@ impl Player {
         }
     }
 
-    pub fn draw(&self, tile_map: &Map) {
+    pub fn draw(&self, tile_map: &TiledMap) {
         tile_map.spr(TILESET_MAP_ID, self.sprite_id, self.get_draw_rect());
     }
 

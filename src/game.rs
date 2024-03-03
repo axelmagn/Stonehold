@@ -1,57 +1,31 @@
-use crate::{
-    camera::{create_screen_camera, create_world_camera},
-    constants::{TILESET_MAP_PATH, TILESET_TEXTURE_PATH, TILE_MAP_JSON_PATH},
-    physics::Physics,
-    player::Player,
-};
+use crate::{camera::Cameras, map::Map, physics::Physics, player::Player};
 use anyhow::Result;
-use futures::try_join;
 use macroquad::{
-    camera::{set_camera, Camera2D},
-    color::{DARKGRAY, WHITE},
-    file::load_string,
-    math::{vec2, Rect},
-    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode},
+    camera::set_camera,
+    color::DARKGRAY,
     window::{clear_background, next_frame},
 };
-use macroquad_tiled::{load_map, Map};
 
 pub struct Game {
-    tile_map: Map,
-    player: Player,
-    physics: Physics,
-
-    /// Worldspace camera (tile units, render_target)
-    world_camera: Camera2D,
-    /// Screenspace camera (screen pixel units)
-    screen_camera: Camera2D,
+    pub map: Map,
+    pub player: Player,
+    pub physics: Physics,
+    pub cameras: Cameras,
 }
 
 impl Game {
-    pub fn new(tile_map: Map) -> Self {
+    pub fn new(map: Map) -> Self {
         Self {
-            tile_map,
+            map,
             player: Player::new(),
             physics: Physics::default(),
-            world_camera: create_world_camera(),
-            screen_camera: create_screen_camera(),
+            cameras: Cameras::new(),
         }
     }
 
     pub async fn load() -> Result<Self> {
-        // load assets concurrently for faster load times
-        let (tile_texture, tile_map_json) = try_join!(
-            load_texture(TILESET_TEXTURE_PATH),
-            load_string(TILE_MAP_JSON_PATH)
-        )?;
-
-        // we want tiles to have crisp pixels
-        tile_texture.set_filter(FilterMode::Nearest);
-
-        // construct tile map from loaded assets
-        let tile_map = load_map(&tile_map_json, &[(TILESET_MAP_PATH, tile_texture)], &[])?;
-
-        Ok(Self::new(tile_map))
+        let map = Map::load().await?;
+        Ok(Self::new(map))
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -74,47 +48,24 @@ impl Game {
         // tick physics
         self.physics.step();
 
-        // update world camera to follow player
-        self.world_camera.target = self.player.position;
+        // update cameras (position on player, etc)
+        self.cameras.update(self.player.position);
     }
 
     fn draw(&self) {
         clear_background(DARKGRAY);
 
-        set_camera(&self.world_camera);
+        // setup drawing for worldspace
+        set_camera(&self.cameras.world_camera);
 
         // draw map
-        {
-            let width = self.tile_map.layers["terrain"].width as f32;
-            let height = self.tile_map.layers["terrain"].height as f32;
-            self.tile_map.draw_tiles(
-                "terrain",
-                // TODO(axelmagn): get from function
-                Rect::new(0., 0., width, height),
-                None,
-            );
-        }
+        self.map.draw();
 
         // draw player
-        self.player.draw(&self.tile_map);
+        self.player.draw(&self.map.tile_map);
 
         // draw full screen quad with previously rendered screen
-        set_camera(&self.screen_camera);
-
-        draw_texture_ex(
-            &self
-                .world_camera
-                .render_target
-                .as_ref()
-                .expect("world camera missing render target")
-                .texture,
-            0.,
-            0.,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2(1., 1.)),
-                ..Default::default()
-            },
-        )
+        set_camera(&self.cameras.screen_camera);
+        self.cameras.draw_world_render_to_screen();
     }
 }
