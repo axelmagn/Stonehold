@@ -37,7 +37,7 @@ impl Map {
         Self {
             tile_map,
             colliders: HashMap::new(),
-            solid_tile_mask: solid_tile_mask,
+            solid_tile_mask,
         }
     }
 

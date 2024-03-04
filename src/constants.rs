@@ -35,9 +35,9 @@ pub const SOLID_TILES: [Range<u32>; 1] = [Range { start: 0, end: 8 }];
 pub const PLAYER_START_POS: Vec2 = vec2(20., 20.);
 
 pub const PLAYER_RADIUS: f32 = 0.5;
-pub const PLAYER_LINEAR_DAMPING: f32 = 1.;
-pub const PLAYER_BRAKING: f32 = 20.;
-pub const PLAYER_ACCELERATION: f32 = 25.;
+pub const PLAYER_LINEAR_DAMPING: f32 = 2.;
+pub const PLAYER_BRAKING: f32 = 10.;
+pub const PLAYER_ACCELERATION: f32 = 48.;
 pub const PLAYER_FRICTION: f32 = 0.;
 pub const PLAYER_FRICTION_COMBINE_RULE: CoefficientCombineRule = CoefficientCombineRule::Min;
 pub const PLAYER_RESTITUTION: f32 = 0.5;

@@ -1,5 +1,3 @@
-use std::f32::EPSILON;
-
 use macroquad::{
     color::WHITE,
     input::{is_key_down, KeyCode},
@@ -74,13 +72,15 @@ impl Player {
             let move_force = vector![move_force.x, move_force.y];
 
             let vel_dir = vec2(body.linvel().x, body.linvel().y).normalize_or_zero();
-            let braking_force =
-                (self.input_direction - vel_dir).normalize_or_zero() * PLAYER_BRAKING * body.mass();
+            let braking_force = (self.input_direction - vel_dir)
+                * body.linvel().magnitude()
+                * PLAYER_BRAKING
+                * body.mass();
             let braking_force = vector![braking_force.x, braking_force.y];
 
             body.reset_forces(true);
-            body.add_force(move_force.into(), true);
-            body.add_force(braking_force.into(), true);
+            body.add_force(move_force, true);
+            body.add_force(braking_force, true);
         }
 
         // latch facing direction on nonzero input direction
@@ -182,8 +182,8 @@ impl Player {
             .translation(vector![start_pos.x + 0.5, start_pos.y + 0.5])
             .lock_rotations()
             .linear_damping(PLAYER_LINEAR_DAMPING) // TODO: make const
-            .ccd_enabled(true)
-            .can_sleep(false)
+            .ccd_enabled(false)
+            .can_sleep(true)
             .build();
         let collider = ColliderBuilder::ball(PLAYER_RADIUS)
             .mass(PLAYER_MASS)

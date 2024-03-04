@@ -2,9 +2,9 @@ use macroquad::time::get_frame_time;
 use rapier2d::{
     dynamics::{
         CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet,
-        RigidBodyHandle, RigidBodySet,
+        RigidBodySet,
     },
-    geometry::{BroadPhase, ColliderHandle, ColliderSet, NarrowPhase},
+    geometry::{BroadPhase, ColliderSet, NarrowPhase},
     math::{Real, Vector},
     pipeline::{PhysicsPipeline, QueryPipeline},
 };
