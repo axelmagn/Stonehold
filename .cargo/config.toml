@@ -1,2 +1,6 @@
 [build]
 target = "wasm32-unknown-unknown"
+
+# BROKEN
+# [target.wasm32-unknown-unknown]
+# runner = "bin/server.sh"
