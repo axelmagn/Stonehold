@@ -1,11 +1,11 @@
 use game::Game;
 
 mod camera;
+mod character;
 mod constants;
 mod game;
 mod map;
 mod physics;
-mod player;
 
 #[macroquad::main("Stonehold")]
 async fn main() {

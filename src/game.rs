@@ -1,10 +1,11 @@
 use crate::{
-    camera::Cameras, constants::PLAYER_START_POS, map::Map, physics::Physics, player::Player,
+    camera::Cameras, character::Character, constants::PLAYER_START_POS, map::Map, physics::Physics,
 };
 use anyhow::Result;
 use macroquad::{
     camera::set_camera,
     color::{Color, DARKGRAY, WHITE},
+    math::vec2,
     text::draw_text,
     time::get_fps,
     window::{clear_background, next_frame},
@@ -12,17 +13,24 @@ use macroquad::{
 
 pub struct Game {
     pub map: Map,
-    pub player: Player,
+    pub player: Character,
     pub physics: Physics,
     pub cameras: Cameras,
 }
 
 impl Game {
     pub fn new(map: Map) -> Self {
+        let mut physics = Physics::default();
+        // TODO(axelmagn): dynamic position
+        let player = Character::create_player(
+            PLAYER_START_POS,
+            &mut physics.colliders,
+            &mut physics.bodies,
+        );
         Self {
             map,
-            player: Player::new(),
-            physics: Physics::default(),
+            player,
+            physics,
             cameras: Cameras::new(),
         }
     }
@@ -34,12 +42,6 @@ impl Game {
 
     pub fn setup(&mut self) {
         self.map.init_colliders(&mut self.physics.colliders);
-
-        self.player.init_physics(
-            PLAYER_START_POS,
-            &mut self.physics.colliders,
-            &mut self.physics.bodies,
-        );
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -53,7 +55,7 @@ impl Game {
     }
 
     fn collect_inputs(&mut self) {
-        self.player.collect_inputs();
+        self.player.collect_player_inputs();
     }
 
     fn update(&mut self) {
@@ -91,7 +93,6 @@ impl Game {
         set_camera(&self.cameras.ui_camera);
         clear_background(Color::new(0., 0., 0., 0.));
         draw_text(&format!("FPS: {:4.0}", get_fps()), 10., 20., 20., WHITE);
-        self.player.draw_ui(&self.physics);
     }
 
     fn draw_screen(&self) {

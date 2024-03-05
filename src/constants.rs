@@ -24,21 +24,17 @@ pub const TERRAIN_MAP_ID: &str = "terrain";
 /// load path for the tile map data
 pub const TILE_MAP_JSON_PATH: &str = "assets/tiled/export/sandbox01.tmj";
 
-/// Sprite ID for the player
-pub const PLAYER_SPRITE_ID: u32 = 85;
-
 // TODO(axelmagn): fill this out
 /// Tile ID ranges which should be treated as solid
 pub const SOLID_TILES: [Range<u32>; 1] = [Range { start: 0, end: 8 }];
 
-// temporary
-pub const PLAYER_START_POS: Vec2 = vec2(20., 20.);
-
-pub const PLAYER_RADIUS: f32 = 0.5;
-pub const PLAYER_LINEAR_DAMPING: f32 = 2.;
-pub const PLAYER_BRAKING: f32 = 10.;
 pub const PLAYER_ACCELERATION: f32 = 48.;
+pub const PLAYER_BRAKING: f32 = 10.;
 pub const PLAYER_FRICTION: f32 = 0.;
 pub const PLAYER_FRICTION_COMBINE_RULE: CoefficientCombineRule = CoefficientCombineRule::Min;
-pub const PLAYER_RESTITUTION: f32 = 0.5;
+pub const PLAYER_LINEAR_DAMPING: f32 = 2.;
 pub const PLAYER_MASS: f32 = 100.;
+pub const PLAYER_RADIUS: f32 = 0.5;
+pub const PLAYER_RESTITUTION: f32 = 0.5;
+pub const PLAYER_SPRITE_ID: u32 = 85;
+pub const PLAYER_START_POS: Vec2 = vec2(20., 20.);
