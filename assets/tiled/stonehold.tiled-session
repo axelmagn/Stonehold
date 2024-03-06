@@ -13,16 +13,27 @@
             "scaleInDock": 1.5
         },
         "sandbox01.tmx": {
-            "scale": 0.8338,
+            "scale": 2,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 313.02470616454787,
-                "y": 217.07843607579753
+                "x": 596.75,
+                "y": 330.25
             }
         },
         "sandbox01.tmx#tiny_dungeon": {
-            "scaleInDock": 1,
+            "scaleInDock": 2,
             "scaleInEditor": 5.5
+        },
+        "sandbox02.tmx": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 556.5,
+                "y": 339
+            }
+        },
+        "sandbox02.tmx#tiny_dungeon": {
+            "scaleInDock": 2
         },
         "tiny_dungeon.tmx": {
             "scale": 1.8703124999999998,
@@ -41,7 +52,7 @@
         }
     },
     "last.exportedFilePath": "//wsl.localhost/Ubuntu/home/axelmagn/Workspace/stonehold/assets/tiled/export",
-    "last.imagePath": "//wsl.localhost/Ubuntu/home/axelmagn/Workspace/stonehold/assets/kenney_tiny-dungeon/Tilemap",
+    "last.imagePath": "//wsl.localhost/Ubuntu/home/axelmagn/Workspace/Stonehold/assets/kenney_tiny-dungeon/Tilemap",
     "lastUsedTilesetExportFilter": "JSON tileset files (*.tsj *.json)",
     "map.height": 48,
     "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
@@ -56,6 +67,7 @@
     "property.type": "bool",
     "recentFiles": [
         "sandbox01.tmx",
+        "sandbox02.tmx",
         "tiny_dungeon.tsx",
         "tiny_dungeon.tmx"
     ],

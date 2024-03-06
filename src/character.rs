@@ -122,6 +122,7 @@ impl Character {
 
     pub fn post_physics(&mut self, physics: &mut Physics) {
         let body = &physics.bodies[self.body_handle];
+        // TODO(axelmagn): snap to simulated pixel
         // mq -> nalgebra conversion
         self.position.x = body.translation().x - 0.5;
         self.position.y = body.translation().y - 0.5;
@@ -172,12 +173,13 @@ impl CharacterConfigProvider for PlayerConfigProvider {
         collider_set: &mut ColliderSet,
         rigid_body_set: &mut RigidBodySet,
     ) -> (ColliderHandle, RigidBodyHandle) {
+        // character body
         let body = RigidBodyBuilder::dynamic()
             .translation(vector![position.x + 0.5, position.y + 0.5])
             .lock_rotations()
             .linear_damping(PLAYER_LINEAR_DAMPING) // TODO: make const
-            .ccd_enabled(true)
             .build();
+
         let collider = ColliderBuilder::ball(PLAYER_RADIUS)
             .mass(PLAYER_MASS)
             .friction(PLAYER_FRICTION)
@@ -224,7 +226,6 @@ impl CharacterConfigProvider for GuardConfigProvider {
             .translation(vector![position.x + 0.5, position.y + 0.5])
             .lock_rotations()
             .linear_damping(GUARD_LINEAR_DAMPING) // TODO: make const
-            .ccd_enabled(true)
             .build();
         let collider = ColliderBuilder::ball(GUARD_RADIUS)
             .mass(GUARD_MASS)

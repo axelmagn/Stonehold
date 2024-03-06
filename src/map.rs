@@ -2,11 +2,12 @@ use anyhow::Result;
 use futures::try_join;
 use macroquad::{
     file::load_string,
-    math::{Rect, UVec2},
+    math::{uvec2, Rect, UVec2},
+    rand::gen_range,
     texture::{load_texture, FilterMode},
 };
-use macroquad_tiled::Map as TileMap;
-use macroquad_tiled::{load_map, TileSet};
+use macroquad_tiled::{load_map, Tile, TileSet};
+use macroquad_tiled::{Layer, Map as TileMap};
 use rapier2d::{
     geometry::{ColliderBuilder, ColliderHandle, ColliderSet},
     na::vector,
@@ -102,5 +103,68 @@ impl Map {
 
     fn is_tile_solid(&self, tile_id: u32) -> bool {
         self.solid_tile_mask[tile_id as usize]
+    }
+}
+
+pub struct MapGenerator {
+    pub ground_tile_id: u32,
+    pub wall_tile_id: u32,
+    pub tileset_id: String,
+
+    pub size: UVec2,
+    pub min_room_size: UVec2,
+    pub max_room_size: UVec2,
+    pub max_room_count: u32,
+}
+
+impl MapGenerator {
+    pub fn generate_layer(&self) -> Layer {
+        let mut layer = Layer {
+            width: self.size.x,
+            height: self.size.y,
+            ..Default::default()
+        };
+
+        // fill layer with wall
+        for _ in 0..(self.size.x * self.size.y) {
+            let wall_tile = Tile {
+                id: self.wall_tile_id,
+                tileset: self.tileset_id.clone(),
+                attrs: String::new(),
+            };
+            layer.data.push(Some(wall_tile));
+        }
+
+        // generate rooms
+        for _ in 0..self.max_room_count {
+            let width =
+                gen_range(self.min_room_size.x, self.max_room_size.x + 1).max(layer.width - 1);
+            let height =
+                gen_range(self.min_room_size.y, self.max_room_size.y + 1).max(layer.height - 1);
+
+            let max_x = layer.width - width;
+            let max_y = layer.height - height;
+
+            let x = gen_range(0, max_x);
+            let y = gen_range(0, max_y);
+
+            self.generate_room(&mut layer, uvec2(x, y), uvec2(width, height));
+        }
+
+        layer
+    }
+
+    pub fn generate_room(&self, layer: &mut Layer, dest: UVec2, size: UVec2) {
+        for x in dest.x..(dest.x + size.x) {
+            for y in dest.y..(dest.y + size.y) {
+                let i = y * layer.width + x;
+                let tile = Tile {
+                    id: self.ground_tile_id,
+                    tileset: self.tileset_id.clone(),
+                    attrs: String::new(),
+                };
+                layer.data[i as usize] = Some(tile);
+            }
+        }
     }
 }

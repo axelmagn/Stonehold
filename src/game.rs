@@ -1,8 +1,11 @@
 use crate::{
     camera::Cameras,
     character::Character,
-    constants::{GUARD_START_POSITIONS, PLAYER_START_POSITION},
-    map::Map,
+    constants::{
+        GUARD_START_POSITIONS, PLAYER_SPRITE_ID, PLAYER_START_POSITION, TERRAIN_MAP_ID,
+        TILESET_COLUMNS, TILESET_MAP_ID, TILESET_TEXTURE_PATH, TILESET_TILE_SIZE,
+    },
+    map::{Map, MapGenerator},
     physics::Physics,
 };
 use anyhow::Result;
@@ -10,6 +13,7 @@ use macroquad::{
     camera::set_camera,
     color::{Color, DARKGRAY, WHITE},
     logging::info,
+    math::{uvec2, vec2},
     text::draw_text,
     time::get_fps,
     window::{clear_background, next_frame},
@@ -38,10 +42,19 @@ impl Game {
             .map(|pos| Character::create_guard(*pos, &mut physics.colliders, &mut physics.bodies))
             .collect();
 
-        // DEBUG
-        for guard in &guards {
-            info!("Created Guard: {:?}", guard)
-        }
+        // DEBUG: mapgen (BROKEN)
+        // let mapgen = MapGenerator {
+        //     ground_tile_id: 1,
+        //     wall_tile_id: 49,
+        //     tileset_id: TILESET_MAP_ID.into(),
+        //     size: uvec2(64, 48),
+        //     min_room_size: uvec2(3, 3),
+        //     max_room_size: uvec2(10, 10),
+        //     max_room_count: 10,
+        // };
+        // let layer = mapgen.generate_layer();
+        // let mut map = map;
+        // map.tile_map.layers.insert(TERRAIN_MAP_ID.into(), layer);
 
         Self {
             map,
@@ -54,6 +67,7 @@ impl Game {
 
     pub async fn load() -> Result<Self> {
         let map = Map::load().await?;
+
         Ok(Self::new(map))
     }
 
@@ -93,6 +107,10 @@ impl Game {
         }
 
         self.player.post_physics(&mut self.physics);
+
+        for guard in &mut self.guards {
+            guard.post_physics(&mut self.physics);
+        }
 
         // update cameras (position on player, etc)
         self.cameras.update(self.player.position);
