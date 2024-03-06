@@ -1,12 +1,13 @@
 use macroquad::time::get_frame_time;
 use rapier2d::{
+    crossbeam::{self, channel::Receiver},
     dynamics::{
         CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet,
         RigidBodySet,
     },
-    geometry::{BroadPhase, ColliderSet, NarrowPhase},
+    geometry::{BroadPhase, ColliderSet, CollisionEvent, ContactForceEvent, NarrowPhase},
     math::{Real, Vector},
-    pipeline::{PhysicsPipeline, QueryPipeline},
+    pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline},
 };
 
 /// Game physics manager
@@ -29,8 +30,12 @@ pub struct Physics {
 }
 
 impl Physics {
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> (Receiver<CollisionEvent>, Receiver<ContactForceEvent>) {
         self.integration_params.dt = get_frame_time();
+
+        let (collision_send, collision_recv) = crossbeam::channel::unbounded();
+        let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
+        let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
 
         self.physics_pipeline.step(
             &self.gravity,
@@ -45,7 +50,9 @@ impl Physics {
             &mut self.ccd_solver,
             Some(&mut self.query_pipeline),
             &(),
-            &(),
-        )
+            &event_handler,
+        );
+
+        (collision_recv, contact_force_recv)
     }
 }

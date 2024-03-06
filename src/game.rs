@@ -1,11 +1,15 @@
 use crate::{
-    camera::Cameras, character::Character, constants::PLAYER_START_POS, map::Map, physics::Physics,
+    camera::Cameras,
+    character::Character,
+    constants::{GUARD_START_POSITIONS, PLAYER_START_POSITION},
+    map::Map,
+    physics::Physics,
 };
 use anyhow::Result;
 use macroquad::{
     camera::set_camera,
     color::{Color, DARKGRAY, WHITE},
-    math::vec2,
+    logging::info,
     text::draw_text,
     time::get_fps,
     window::{clear_background, next_frame},
@@ -14,6 +18,7 @@ use macroquad::{
 pub struct Game {
     pub map: Map,
     pub player: Character,
+    pub guards: Vec<Character>,
     pub physics: Physics,
     pub cameras: Cameras,
 }
@@ -23,13 +28,25 @@ impl Game {
         let mut physics = Physics::default();
         // TODO(axelmagn): dynamic position
         let player = Character::create_player(
-            PLAYER_START_POS,
+            PLAYER_START_POSITION,
             &mut physics.colliders,
             &mut physics.bodies,
         );
+
+        let guards = GUARD_START_POSITIONS
+            .iter()
+            .map(|pos| Character::create_guard(*pos, &mut physics.colliders, &mut physics.bodies))
+            .collect();
+
+        // DEBUG
+        for guard in &guards {
+            info!("Created Guard: {:?}", guard)
+        }
+
         Self {
             map,
             player,
+            guards,
             physics,
             cameras: Cameras::new(),
         }
@@ -63,7 +80,18 @@ impl Game {
         self.player.update(&mut self.physics);
 
         // tick physics
-        self.physics.step();
+        let (collision_recv, contact_force_recv) = self.physics.step();
+
+        // DEBUG
+        while let Ok(collision_event) = collision_recv.try_recv() {
+            // Handle the collision event.
+            info!("Received collision event: {:?}", collision_event);
+        }
+        while let Ok(contact_force_event) = contact_force_recv.try_recv() {
+            // Handle the contact force event.
+            info!("Received contact force event: {:?}", contact_force_event);
+        }
+
         self.player.post_physics(&mut self.physics);
 
         // update cameras (position on player, etc)
@@ -86,6 +114,11 @@ impl Game {
 
         // draw player
         self.player.draw(&self.map.tile_map);
+
+        // draw guards
+        self.guards
+            .iter()
+            .for_each(|guard| guard.draw(&self.map.tile_map));
     }
 
     fn draw_ui(&self) {

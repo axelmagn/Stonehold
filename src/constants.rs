@@ -37,4 +37,15 @@ pub const PLAYER_MASS: f32 = 100.;
 pub const PLAYER_RADIUS: f32 = 0.5;
 pub const PLAYER_RESTITUTION: f32 = 0.5;
 pub const PLAYER_SPRITE_ID: u32 = 85;
-pub const PLAYER_START_POS: Vec2 = vec2(20., 20.);
+pub const PLAYER_START_POSITION: Vec2 = vec2(20., 20.);
+
+pub const GUARD_ACCELERATION: f32 = 32.;
+pub const GUARD_BRAKING: f32 = 10.;
+pub const GUARD_FRICTION: f32 = 0.;
+pub const GUARD_FRICTION_COMBINE_RULE: CoefficientCombineRule = CoefficientCombineRule::Min;
+pub const GUARD_LINEAR_DAMPING: f32 = 2.5;
+pub const GUARD_MASS: f32 = 100.;
+pub const GUARD_RADIUS: f32 = 0.5;
+pub const GUARD_RESTITUTION: f32 = 0.5;
+pub const GUARD_SPRITE_ID: u32 = 96;
+pub const GUARD_START_POSITIONS: [Vec2; 1] = [vec2(23., 23.)];

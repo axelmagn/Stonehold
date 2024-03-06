@@ -1,16 +1,20 @@
 use macroquad::{
     input::{is_key_down, KeyCode},
     math::{vec2, Rect, Vec2},
+    time::get_frame_time,
 };
 use macroquad_tiled::Map as TiledMap;
 use nalgebra::vector;
 use rapier2d::{
     dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet},
     geometry::{ColliderBuilder, ColliderHandle, ColliderSet},
+    pipeline::ActiveEvents,
 };
 
 use crate::{
     constants::{
+        GUARD_ACCELERATION, GUARD_BRAKING, GUARD_FRICTION, GUARD_FRICTION_COMBINE_RULE,
+        GUARD_LINEAR_DAMPING, GUARD_MASS, GUARD_RADIUS, GUARD_RESTITUTION, GUARD_SPRITE_ID,
         PLAYER_ACCELERATION, PLAYER_BRAKING, PLAYER_FRICTION, PLAYER_FRICTION_COMBINE_RULE,
         PLAYER_LINEAR_DAMPING, PLAYER_MASS, PLAYER_RADIUS, PLAYER_RESTITUTION, PLAYER_SPRITE_ID,
         TILESET_MAP_ID,
@@ -18,10 +22,13 @@ use crate::{
     physics::Physics,
 };
 
+#[derive(Debug)]
 pub enum FacingDirection {
     Left,
     Right,
 }
+
+#[derive(Debug)]
 pub struct Character {
     pub position: Vec2,
     input_direction: Vec2,
@@ -29,7 +36,7 @@ pub struct Character {
     sprite_id: u32,
     acceleration: f32,
     braking: f32,
-    collider_handle: ColliderHandle,
+    _collider_handle: ColliderHandle,
     body_handle: RigidBodyHandle,
 }
 
@@ -48,7 +55,7 @@ impl Character {
             sprite_id: T::get_sprite_id(),
             acceleration: T::get_acceleration(),
             braking: T::get_braking(),
-            collider_handle,
+            _collider_handle: collider_handle,
             body_handle,
         }
     }
@@ -59,6 +66,14 @@ impl Character {
         rigid_body_set: &mut RigidBodySet,
     ) -> Self {
         Self::create::<PlayerConfigProvider>(position, collider_set, rigid_body_set)
+    }
+
+    pub fn create_guard(
+        position: Vec2,
+        collider_set: &mut ColliderSet,
+        rigid_body_set: &mut RigidBodySet,
+    ) -> Self {
+        Self::create::<GuardConfigProvider>(position, collider_set, rigid_body_set)
     }
 
     pub fn collect_player_inputs(&mut self) {
@@ -82,19 +97,20 @@ impl Character {
         // propagate input to physics object
         let body = &mut physics.bodies[self.body_handle];
 
-        let move_force = self.input_direction * self.acceleration * body.mass();
-        let move_force = vector![move_force.x, move_force.y];
+        let move_acc = self.input_direction * self.acceleration;
+        let move_acc = vector![move_acc.x, move_acc.y];
 
         let vel_dir = vec2(body.linvel().x, body.linvel().y).normalize_or_zero();
-        let braking_force = (self.input_direction - vel_dir)
-            * body.linvel().magnitude()
-            * self.braking
-            * body.mass();
-        let braking_force = vector![braking_force.x, braking_force.y];
+        let braking_acc =
+            (self.input_direction - vel_dir) * body.linvel().magnitude() * self.braking;
+        let braking_acc = vector![braking_acc.x, braking_acc.y];
 
-        body.reset_forces(true);
-        body.add_force(move_force, true);
-        body.add_force(braking_force, true);
+        // body.reset_forces(true);
+        // body.add_force(move_force, true);
+        // body.add_force(braking_force, true);
+        let dt = get_frame_time();
+        let new_linvel = body.linvel() + move_acc * dt + braking_acc * dt;
+        body.set_linvel(new_linvel, true);
 
         // latch facing direction on nonzero input direction
         if self.input_direction.x > 0. {
@@ -160,14 +176,14 @@ impl CharacterConfigProvider for PlayerConfigProvider {
             .translation(vector![position.x + 0.5, position.y + 0.5])
             .lock_rotations()
             .linear_damping(PLAYER_LINEAR_DAMPING) // TODO: make const
-            .ccd_enabled(false)
-            .can_sleep(true)
+            .ccd_enabled(true)
             .build();
         let collider = ColliderBuilder::ball(PLAYER_RADIUS)
             .mass(PLAYER_MASS)
             .friction(PLAYER_FRICTION)
             .friction_combine_rule(PLAYER_FRICTION_COMBINE_RULE)
             .restitution(PLAYER_RESTITUTION)
+            .active_events(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
             .build();
 
         let body_handle = rigid_body_set.insert(body);
@@ -182,5 +198,45 @@ impl CharacterConfigProvider for PlayerConfigProvider {
 
     fn get_braking() -> f32 {
         PLAYER_BRAKING
+    }
+}
+
+struct GuardConfigProvider;
+impl CharacterConfigProvider for GuardConfigProvider {
+    fn get_sprite_id() -> u32 {
+        GUARD_SPRITE_ID
+    }
+
+    fn get_acceleration() -> f32 {
+        GUARD_ACCELERATION
+    }
+
+    fn get_braking() -> f32 {
+        GUARD_BRAKING
+    }
+
+    fn init_physics(
+        position: Vec2,
+        collider_set: &mut ColliderSet,
+        rigid_body_set: &mut RigidBodySet,
+    ) -> (ColliderHandle, RigidBodyHandle) {
+        let body = RigidBodyBuilder::dynamic()
+            .translation(vector![position.x + 0.5, position.y + 0.5])
+            .lock_rotations()
+            .linear_damping(GUARD_LINEAR_DAMPING) // TODO: make const
+            .ccd_enabled(true)
+            .build();
+        let collider = ColliderBuilder::ball(GUARD_RADIUS)
+            .mass(GUARD_MASS)
+            .friction(GUARD_FRICTION)
+            .friction_combine_rule(GUARD_FRICTION_COMBINE_RULE)
+            .restitution(GUARD_RESTITUTION)
+            .active_events(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
+            .build();
+
+        let body_handle = rigid_body_set.insert(body);
+        let collider_handle =
+            collider_set.insert_with_parent(collider, body_handle, rigid_body_set);
+        (collider_handle, body_handle)
     }
 }
