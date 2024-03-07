@@ -118,7 +118,7 @@ pub struct MapGenerator {
 }
 
 impl MapGenerator {
-    pub fn generate_layer(&self) -> Layer {
+    pub fn generate_layer(&self) -> (Layer, Vec<Rect>) {
         let mut layer = Layer {
             width: self.size.x,
             height: self.size.y,
@@ -136,27 +136,104 @@ impl MapGenerator {
         }
 
         // generate rooms
+        let mut rooms: Vec<Rect> = Vec::new();
         for _ in 0..self.max_room_count {
             let width =
-                gen_range(self.min_room_size.x, self.max_room_size.x + 1).max(layer.width - 1);
+                gen_range(self.min_room_size.x, self.max_room_size.x + 1).min(layer.width - 1);
             let height =
-                gen_range(self.min_room_size.y, self.max_room_size.y + 1).max(layer.height - 1);
+                gen_range(self.min_room_size.y, self.max_room_size.y + 1).min(layer.height - 1);
 
-            let max_x = layer.width - width;
-            let max_y = layer.height - height;
+            let max_x = layer.width - width - 1;
+            let max_y = layer.height - height - 1;
 
-            let x = gen_range(0, max_x);
-            let y = gen_range(0, max_y);
+            let x = gen_range(1, max_x);
+            let y = gen_range(1, max_y);
+
+            let room = Rect::new(x as f32, y as f32, width as f32, height as f32);
+            // check for collisions
+            let overlap_found = rooms.iter().any(|prior| room.overlaps(prior));
+            if overlap_found {
+                continue;
+            }
 
             self.generate_room(&mut layer, uvec2(x, y), uvec2(width, height));
+
+            // draw corridor from last room
+            if let Some(last_room) = rooms.last() {
+                // let horizontal_first = gen_range(0, 2) > 0;
+                let horizontal_first = true;
+
+                let last_x = last_room.center().x as u32;
+                let last_y = last_room.center().y as u32;
+                let room_x = room.center().x as u32;
+                let room_y = room.center().y as u32;
+
+                if horizontal_first {
+                    self.generate_corridor_horizontal(&mut layer, last_x, room_x, last_y, Some(1));
+                    self.generate_corridor_vertical(&mut layer, room_x, last_y, room_y, Some(1));
+                } else {
+                    self.generate_corridor_vertical(&mut layer, last_x, last_y, room_y, Some(1));
+                    self.generate_corridor_horizontal(&mut layer, last_x, room_x, room_y, Some(1));
+                }
+            }
+
+            rooms.push(room);
         }
 
-        layer
+        (layer, rooms)
     }
 
     pub fn generate_room(&self, layer: &mut Layer, dest: UVec2, size: UVec2) {
         for x in dest.x..(dest.x + size.x) {
             for y in dest.y..(dest.y + size.y) {
+                let i = y * layer.width + x;
+                let tile = Tile {
+                    id: self.ground_tile_id,
+                    tileset: self.tileset_id.clone(),
+                    attrs: String::new(),
+                };
+                layer.data[i as usize] = Some(tile);
+            }
+        }
+    }
+
+    pub fn generate_corridor_horizontal(
+        &self,
+        layer: &mut Layer,
+        src_x: u32,
+        dest_x: u32,
+        y: u32,
+        padding: Option<u32>,
+    ) {
+        let padding = padding.unwrap_or(0);
+        let (src_x, dest_x) = (src_x.min(dest_x), src_x.max(dest_x));
+
+        for y in (y - padding)..=(y + padding) {
+            for x in (src_x - padding)..=(dest_x + padding) {
+                let i = y * layer.width + x;
+                let tile = Tile {
+                    id: self.ground_tile_id,
+                    tileset: self.tileset_id.clone(),
+                    attrs: String::new(),
+                };
+                layer.data[i as usize] = Some(tile);
+            }
+        }
+    }
+
+    pub fn generate_corridor_vertical(
+        &self,
+        layer: &mut Layer,
+        x: u32,
+        src_y: u32,
+        dest_y: u32,
+        padding: Option<u32>,
+    ) {
+        let padding = padding.unwrap_or(1);
+        let (src_y, dest_y) = (src_y.min(dest_y), src_y.max(dest_y));
+
+        for x in (x - padding)..=(x + padding) {
+            for y in (src_y - padding)..=(dest_y + padding) {
                 let i = y * layer.width + x;
                 let tile = Tile {
                     id: self.ground_tile_id,

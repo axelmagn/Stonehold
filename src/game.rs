@@ -1,10 +1,7 @@
 use crate::{
     camera::Cameras,
     character::Character,
-    constants::{
-        GUARD_START_POSITIONS, PLAYER_SPRITE_ID, PLAYER_START_POSITION, TERRAIN_MAP_ID,
-        TILESET_COLUMNS, TILESET_MAP_ID, TILESET_TEXTURE_PATH, TILESET_TILE_SIZE,
-    },
+    constants::{TERRAIN_MAP_ID, TILESET_MAP_ID},
     map::{Map, MapGenerator},
     physics::Physics,
 };
@@ -13,7 +10,8 @@ use macroquad::{
     camera::set_camera,
     color::{Color, DARKGRAY, WHITE},
     logging::info,
-    math::{uvec2, vec2},
+    math::uvec2,
+    rand::srand,
     text::draw_text,
     time::get_fps,
     window::{clear_background, next_frame},
@@ -31,30 +29,51 @@ impl Game {
     pub fn new(map: Map) -> Self {
         let mut physics = Physics::default();
         // TODO(axelmagn): dynamic position
+        // let player = Character::create_player(
+        //     PLAYER_START_POSITION,
+        //     &mut physics.colliders,
+        //     &mut physics.bodies,
+        // );
+
+        // let guards = GUARD_START_POSITIONS
+        //     .iter()
+        //     .map(|pos| Character::create_guard(*pos, &mut physics.colliders, &mut physics.bodies))
+        //     .collect();
+
+        // DEBUG: mapgen (BROKEN)
+
+        srand(42);
+
+        let mapgen = MapGenerator {
+            ground_tile_id: 48,
+            wall_tile_id: 0,
+            tileset_id: TILESET_MAP_ID.into(),
+            size: uvec2(
+                map.tile_map.raw_tiled_map.width,
+                map.tile_map.raw_tiled_map.height,
+            ),
+            min_room_size: uvec2(5, 5),
+            max_room_size: uvec2(10, 10),
+            max_room_count: 10,
+        };
+        let (_, _) = mapgen.generate_layer();
+        let (layer, rooms) = mapgen.generate_layer();
+        let mut map = map;
+        map.tile_map.layers.insert(TERRAIN_MAP_ID.into(), layer);
+        info!("rooms: {:?}", rooms);
+
         let player = Character::create_player(
-            PLAYER_START_POSITION,
+            rooms[0].center(),
             &mut physics.colliders,
             &mut physics.bodies,
         );
 
-        let guards = GUARD_START_POSITIONS
+        let guards = rooms[1..]
             .iter()
-            .map(|pos| Character::create_guard(*pos, &mut physics.colliders, &mut physics.bodies))
+            .map(|room| {
+                Character::create_guard(room.center(), &mut physics.colliders, &mut physics.bodies)
+            })
             .collect();
-
-        // DEBUG: mapgen (BROKEN)
-        // let mapgen = MapGenerator {
-        //     ground_tile_id: 1,
-        //     wall_tile_id: 49,
-        //     tileset_id: TILESET_MAP_ID.into(),
-        //     size: uvec2(64, 48),
-        //     min_room_size: uvec2(3, 3),
-        //     max_room_size: uvec2(10, 10),
-        //     max_room_count: 10,
-        // };
-        // let layer = mapgen.generate_layer();
-        // let mut map = map;
-        // map.tile_map.layers.insert(TERRAIN_MAP_ID.into(), layer);
 
         Self {
             map,
