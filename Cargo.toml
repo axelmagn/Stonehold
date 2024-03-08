@@ -16,6 +16,7 @@ opt-level = 1
 [dependencies]
 anyhow = "1.0.80"
 futures = "0.3.30"
+parry2d = { git = "https://github.com/axelmagn/parry", rev="71b0fa8"}
 macroquad = "0.4.5"
 macroquad-tiled = "0.2.0"
 nalgebra = "0.32.4"
