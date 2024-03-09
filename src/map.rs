@@ -15,11 +15,12 @@ use rapier2d::{
 use std::{collections::HashMap, iter, ops::Range};
 
 use crate::constants::{
-    CORRIDOR_PADDING, FACADE_01_TILE_ID, GROUND_01_TILE_ID, MAX_ROOM_COUNT, MAX_ROOM_SIZE,
-    MIN_ROOM_SIZE, SOLID_TILES, TERRAIN_MAP_ID, TILESET_MAP_ID, TILESET_MAP_PATH,
-    TILESET_TEXTURE_PATH, TILE_MAP_JSON_PATH, WALL_01_TILE_ID, WALL_DOWN_TILE_ID, WALL_INNER_DL_ID,
-    WALL_INNER_DR_ID, WALL_INNER_UL_ID, WALL_INNER_UR_ID, WALL_LEFT_TILE_ID, WALL_OUTER_DL_ID,
-    WALL_OUTER_DR_ID, WALL_OUTER_UL_ID, WALL_OUTER_UR_ID, WALL_RIGHT_TILE_ID, WALL_UP_TILE_ID,
+    CORRIDOR_PADDING, FACADE_CENTER_TILE_ID, FACADE_LEFT_TILE_ID, FACADE_RIGHT_TILE_ID,
+    GROUND_01_TILE_ID, MAX_ROOM_COUNT, MAX_ROOM_SIZE, MIN_ROOM_SIZE, SOLID_TILES, TERRAIN_MAP_ID,
+    TILESET_MAP_ID, TILESET_MAP_PATH, TILESET_TEXTURE_PATH, TILE_MAP_JSON_PATH, WALL_01_TILE_ID,
+    WALL_DOWN_TILE_ID, WALL_INNER_DL_ID, WALL_INNER_DR_ID, WALL_INNER_UL_ID, WALL_INNER_UR_ID,
+    WALL_LEFT_TILE_ID, WALL_OUTER_DL_ID, WALL_OUTER_DR_ID, WALL_OUTER_UL_ID, WALL_OUTER_UR_ID,
+    WALL_RIGHT_TILE_ID, WALL_TILE_IDS, WALL_UP_TILE_ID,
 };
 
 pub struct Map {
@@ -290,10 +291,17 @@ impl MapGenerator {
 
     pub fn rewrite_wall_details(&self, layer: &mut Layer) {
         // rewrite wall patterns that we don't have detail tiles for
-        for x in 0..layer.width {
-            for y in 0..layer.height {
-                self.try_rewrite_thin_horizontal_wall(x, y, layer);
-                self.try_rewrite_thin_vertical_wall(x, y, layer);
+        let mut needs_scan = true;
+        while needs_scan {
+            for x in 0..layer.width {
+                for y in 0..layer.height {
+                    needs_scan = false;
+                    needs_scan = self.try_rewrite_thin_horizontal_wall(x, y, layer) || needs_scan;
+                    needs_scan = self.try_rewrite_thin_vertical_wall(x, y, layer) || needs_scan;
+                    needs_scan =
+                        self.try_rewrite_double_corner_horizontal(x, y, layer) || needs_scan;
+                    needs_scan = self.try_rewrite_double_corner_vertical(x, y, layer) || needs_scan;
+                }
             }
         }
 
@@ -320,6 +328,14 @@ impl MapGenerator {
             for y in 0..layer.height {
                 self.try_rewrite_bottom_wall(x, y, layer);
                 self.try_rewrite_top_wall(x, y, layer);
+            }
+        }
+
+        for x in 0..layer.width {
+            for y in 0..layer.height {
+                self.try_rewrite_center_facades(x, y, layer);
+                self.try_rewrite_left_facades(x, y, layer);
+                self.try_rewrite_right_facades(x, y, layer);
             }
         }
     }
@@ -378,6 +394,161 @@ impl MapGenerator {
         }
 
         layer.data[i0] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_double_corner_horizontal(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 2 || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i00 = xytoi(x, y, layer);
+        let i10 = xytoi(x + 1, y, layer);
+        let i20 = xytoi(x + 2, y, layer);
+        let i01 = xytoi(x, y + 1, layer);
+        let i11 = xytoi(x + 1, y + 1, layer);
+        let i21 = xytoi(x + 2, y + 1, layer);
+
+        if let (
+            &Some(tile00),
+            &Some(tile10),
+            &Some(tile20),
+            &Some(tile01),
+            &Some(tile11),
+            &Some(tile21),
+        ) = (
+            &layer.data[i00].as_ref(),
+            &layer.data[i10].as_ref(),
+            &layer.data[i20].as_ref(),
+            &layer.data[i01].as_ref(),
+            &layer.data[i11].as_ref(),
+            &layer.data[i21].as_ref(),
+        ) {
+            if !(tile00.id == WALL_01_TILE_ID
+                && tile10.id == WALL_01_TILE_ID
+                && tile20.id == GROUND_01_TILE_ID
+                && tile01.id == GROUND_01_TILE_ID
+                && tile11.id == WALL_01_TILE_ID
+                && tile21.id == WALL_01_TILE_ID)
+                || (tile00.id == GROUND_01_TILE_ID
+                    && tile10.id == WALL_01_TILE_ID
+                    && tile20.id == WALL_01_TILE_ID
+                    && tile01.id == WALL_01_TILE_ID
+                    && tile11.id == WALL_01_TILE_ID
+                    && tile21.id == GROUND_01_TILE_ID)
+            {
+                return false;
+            }
+        }
+
+        layer.data[i00] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        layer.data[i10] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        layer.data[i20] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        layer.data[i01] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        layer.data[i11] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        layer.data[i21] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+    pub fn try_rewrite_double_corner_vertical(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height - 2 {
+            return false;
+        }
+
+        let i00 = xytoi(x, y, layer);
+        let i10 = xytoi(x, y + 1, layer);
+        let i20 = xytoi(x, y + 2, layer);
+        let i01 = xytoi(x + 1, y, layer);
+        let i11 = xytoi(x + 1, y + 1, layer);
+        let i21 = xytoi(x + 1, y + 2, layer);
+
+        if let (
+            &Some(tile00),
+            &Some(tile10),
+            &Some(tile20),
+            &Some(tile01),
+            &Some(tile11),
+            &Some(tile21),
+        ) = (
+            &layer.data[i00].as_ref(),
+            &layer.data[i10].as_ref(),
+            &layer.data[i20].as_ref(),
+            &layer.data[i01].as_ref(),
+            &layer.data[i11].as_ref(),
+            &layer.data[i21].as_ref(),
+        ) {
+            if !(tile00.id == WALL_01_TILE_ID
+                && tile10.id == WALL_01_TILE_ID
+                && tile20.id == GROUND_01_TILE_ID
+                && tile01.id == GROUND_01_TILE_ID
+                && tile11.id == WALL_01_TILE_ID
+                && tile21.id == WALL_01_TILE_ID)
+                || (tile00.id == GROUND_01_TILE_ID
+                    && tile10.id == WALL_01_TILE_ID
+                    && tile20.id == WALL_01_TILE_ID
+                    && tile01.id == WALL_01_TILE_ID
+                    && tile11.id == WALL_01_TILE_ID
+                    && tile21.id == GROUND_01_TILE_ID)
+            {
+                return false;
+            }
+        }
+
+        layer.data[i00] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        layer.data[i10] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        layer.data[i20] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        layer.data[i01] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        layer.data[i11] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        layer.data[i21] = Some(Tile {
             id: WALL_01_TILE_ID,
             tileset: self.tileset_id.clone(),
             attrs: String::new(),
@@ -494,9 +665,9 @@ impl MapGenerator {
             &layer.data[i10].as_ref(),
             &layer.data[i11].as_ref(),
         ) {
-            if tile00.id != WALL_01_TILE_ID
-                || tile01.id != WALL_01_TILE_ID
-                || tile10.id != WALL_01_TILE_ID
+            if !WALL_TILE_IDS.contains(&tile00.id)
+                || !WALL_TILE_IDS.contains(&tile01.id)
+                || !WALL_TILE_IDS.contains(&tile10.id)
                 || tile11.id != GROUND_01_TILE_ID
             {
                 return false;
@@ -528,10 +699,10 @@ impl MapGenerator {
             &layer.data[i10].as_ref(),
             &layer.data[i11].as_ref(),
         ) {
-            if tile00.id != WALL_01_TILE_ID
-                || tile01.id != WALL_01_TILE_ID
+            if !WALL_TILE_IDS.contains(&tile00.id)
+                || !WALL_TILE_IDS.contains(&tile01.id)
                 || tile10.id != GROUND_01_TILE_ID
-                || tile11.id != WALL_01_TILE_ID
+                || !WALL_TILE_IDS.contains(&tile11.id)
             {
                 return false;
             }
@@ -562,10 +733,10 @@ impl MapGenerator {
             &layer.data[i10].as_ref(),
             &layer.data[i11].as_ref(),
         ) {
-            if tile00.id != WALL_01_TILE_ID
+            if !WALL_TILE_IDS.contains(&tile00.id)
                 || tile01.id != GROUND_01_TILE_ID
-                || tile10.id != WALL_01_TILE_ID
-                || tile11.id != WALL_01_TILE_ID
+                || !WALL_TILE_IDS.contains(&tile10.id)
+                || !WALL_TILE_IDS.contains(&tile11.id)
             {
                 return false;
             }
@@ -597,9 +768,9 @@ impl MapGenerator {
             &layer.data[i11].as_ref(),
         ) {
             if tile00.id != GROUND_01_TILE_ID
-                || tile01.id != WALL_01_TILE_ID
-                || tile10.id != WALL_01_TILE_ID
-                || tile11.id != WALL_01_TILE_ID
+                || !WALL_TILE_IDS.contains(&tile01.id)
+                || !WALL_TILE_IDS.contains(&tile10.id)
+                || !WALL_TILE_IDS.contains(&tile11.id)
             {
                 return false;
             }
@@ -633,7 +804,7 @@ impl MapGenerator {
             if tile00.id != GROUND_01_TILE_ID
                 || tile01.id != GROUND_01_TILE_ID
                 || tile10.id != GROUND_01_TILE_ID
-                || tile11.id != WALL_01_TILE_ID
+                || !WALL_TILE_IDS.contains(&tile11.id)
             {
                 return false;
             }
@@ -666,7 +837,7 @@ impl MapGenerator {
         ) {
             if tile00.id != GROUND_01_TILE_ID
                 || tile01.id != GROUND_01_TILE_ID
-                || tile10.id != WALL_01_TILE_ID
+                || !WALL_TILE_IDS.contains(&tile10.id)
                 || tile11.id != GROUND_01_TILE_ID
             {
                 return false;
@@ -698,7 +869,7 @@ impl MapGenerator {
             &layer.data[i11].as_ref(),
         ) {
             if tile00.id != GROUND_01_TILE_ID
-                || tile01.id != WALL_01_TILE_ID
+                || !WALL_TILE_IDS.contains(&tile01.id)
                 || tile10.id != GROUND_01_TILE_ID
                 || tile11.id != GROUND_01_TILE_ID
             {
@@ -731,7 +902,7 @@ impl MapGenerator {
             &layer.data[i10].as_ref(),
             &layer.data[i11].as_ref(),
         ) {
-            if tile00.id != WALL_01_TILE_ID
+            if !WALL_TILE_IDS.contains(&tile00.id)
                 || tile01.id != GROUND_01_TILE_ID
                 || tile10.id != GROUND_01_TILE_ID
                 || tile11.id != GROUND_01_TILE_ID
@@ -742,6 +913,75 @@ impl MapGenerator {
 
         layer.data[i00] = Some(Tile {
             id: WALL_OUTER_DR_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_center_facades(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i0 = xytoi(x, y, layer);
+        let i1 = xytoi(x, y + 1, &layer);
+
+        if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
+            if tile0.id != WALL_UP_TILE_ID || tile1.id != GROUND_01_TILE_ID {
+                return false;
+            }
+        }
+
+        layer.data[i1] = Some(Tile {
+            id: FACADE_CENTER_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_left_facades(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i0 = xytoi(x, y, layer);
+        let i1 = xytoi(x, y + 1, &layer);
+
+        if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
+            if tile0.id != WALL_OUTER_DL_ID || tile1.id != GROUND_01_TILE_ID {
+                return false;
+            }
+        }
+
+        layer.data[i1] = Some(Tile {
+            id: FACADE_LEFT_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_right_facades(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i0 = xytoi(x, y, layer);
+        let i1 = xytoi(x, y + 1, &layer);
+
+        if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
+            if tile0.id != WALL_OUTER_DR_ID || tile1.id != GROUND_01_TILE_ID {
+                return false;
+            }
+        }
+
+        layer.data[i1] = Some(Tile {
+            id: FACADE_RIGHT_TILE_ID,
             tileset: self.tileset_id.clone(),
             attrs: String::new(),
         });

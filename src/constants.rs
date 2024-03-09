@@ -38,7 +38,7 @@ pub const SOLID_TILES: [Range<u32>; 3] = [
 
 pub const MIN_ROOM_SIZE: UVec2 = uvec2(10, 10);
 pub const MAX_ROOM_SIZE: UVec2 = uvec2(20, 20);
-pub const MAX_ROOM_COUNT: u32 = 10;
+pub const MAX_ROOM_COUNT: u32 = 20;
 pub const CORRIDOR_PADDING: Option<u32> = Some(2);
 
 pub const WALL_01_TILE_ID: u32 = 0;
@@ -54,8 +54,25 @@ pub const WALL_OUTER_UL_ID: u32 = 4;
 pub const WALL_OUTER_UR_ID: u32 = 5;
 pub const WALL_OUTER_DL_ID: u32 = 16;
 pub const WALL_OUTER_DR_ID: u32 = 17;
+pub const WALL_TILE_IDS: &[u32] = &[
+    WALL_01_TILE_ID,
+    WALL_UP_TILE_ID,
+    WALL_DOWN_TILE_ID,
+    WALL_LEFT_TILE_ID,
+    WALL_RIGHT_TILE_ID,
+    WALL_INNER_UL_ID,
+    WALL_INNER_UR_ID,
+    WALL_INNER_DL_ID,
+    WALL_INNER_DR_ID,
+    WALL_OUTER_UL_ID,
+    WALL_OUTER_UR_ID,
+    WALL_OUTER_DL_ID,
+    WALL_OUTER_DR_ID,
+];
 
-pub const FACADE_01_TILE_ID: u32 = 40;
+pub const FACADE_CENTER_TILE_ID: u32 = 40;
+pub const FACADE_LEFT_TILE_ID: u32 = 57;
+pub const FACADE_RIGHT_TILE_ID: u32 = 59;
 
 pub const GROUND_01_TILE_ID: u32 = 48;
 
