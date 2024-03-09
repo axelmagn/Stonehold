@@ -13,7 +13,7 @@ use macroquad::{
     math::uvec2,
     rand::srand,
     text::draw_text,
-    time::get_fps,
+    time::{get_fps, get_time},
     window::{clear_background, next_frame},
 };
 
@@ -42,20 +42,29 @@ impl Game {
 
         // DEBUG: mapgen (BROKEN)
 
-        srand(42);
+        // random seed
+        // get_time varies *enough* that the seed should be random between runs
+        let seed = (get_time() % 1. * (u64::MAX as f64)) as u64;
+        info!("Random Seed: {}", seed);
+        srand(seed);
 
-        let mapgen = MapGenerator {
-            ground_tile_id: 48,
-            wall_tile_id: 0,
-            tileset_id: TILESET_MAP_ID.into(),
-            size: uvec2(
-                map.tile_map.raw_tiled_map.width,
-                map.tile_map.raw_tiled_map.height,
-            ),
-            min_room_size: uvec2(5, 5),
-            max_room_size: uvec2(10, 10),
-            max_room_count: 10,
-        };
+        // let mapgen = MapGenerator {
+        //     ground_tile_id: 48,
+        //     wall_tile_id: 0,
+        //     tileset_id: TILESET_MAP_ID.into(),
+        //     size: uvec2(
+        //         map.tile_map.raw_tiled_map.width,
+        //         map.tile_map.raw_tiled_map.height,
+        //     ),
+        //     min_room_size: uvec2(10, 10),
+        //     max_room_size: uvec2(15, 15),
+        //     max_room_count: 10,
+        // };
+        let mapgen = MapGenerator::new(uvec2(
+            map.tile_map.raw_tiled_map.width,
+            map.tile_map.raw_tiled_map.height,
+        ));
+
         let (_, _) = mapgen.generate_layer();
         let (layer, rooms) = mapgen.generate_layer();
         let mut map = map;

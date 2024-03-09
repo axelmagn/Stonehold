@@ -15,8 +15,11 @@ use rapier2d::{
 use std::{collections::HashMap, iter, ops::Range};
 
 use crate::constants::{
-    SOLID_TILES, TERRAIN_MAP_ID, TILESET_MAP_ID, TILESET_MAP_PATH, TILESET_TEXTURE_PATH,
-    TILE_MAP_JSON_PATH,
+    CORRIDOR_PADDING, FACADE_01_TILE_ID, GROUND_01_TILE_ID, MAX_ROOM_COUNT, MAX_ROOM_SIZE,
+    MIN_ROOM_SIZE, SOLID_TILES, TERRAIN_MAP_ID, TILESET_MAP_ID, TILESET_MAP_PATH,
+    TILESET_TEXTURE_PATH, TILE_MAP_JSON_PATH, WALL_01_TILE_ID, WALL_DOWN_TILE_ID, WALL_INNER_DL_ID,
+    WALL_INNER_DR_ID, WALL_INNER_UL_ID, WALL_INNER_UR_ID, WALL_LEFT_TILE_ID, WALL_OUTER_DL_ID,
+    WALL_OUTER_DR_ID, WALL_OUTER_UL_ID, WALL_OUTER_UR_ID, WALL_RIGHT_TILE_ID, WALL_UP_TILE_ID,
 };
 
 pub struct Map {
@@ -115,9 +118,23 @@ pub struct MapGenerator {
     pub min_room_size: UVec2,
     pub max_room_size: UVec2,
     pub max_room_count: u32,
+    pub corridor_padding: Option<u32>,
 }
 
 impl MapGenerator {
+    pub fn new(size: UVec2) -> Self {
+        MapGenerator {
+            ground_tile_id: GROUND_01_TILE_ID,
+            wall_tile_id: WALL_01_TILE_ID,
+            tileset_id: TILESET_MAP_ID.into(),
+            size,
+            min_room_size: MIN_ROOM_SIZE,
+            max_room_size: MAX_ROOM_SIZE,
+            max_room_count: MAX_ROOM_COUNT,
+            corridor_padding: CORRIDOR_PADDING,
+        }
+    }
+
     pub fn generate_layer(&self) -> (Layer, Vec<Rect>) {
         let mut layer = Layer {
             width: self.size.x,
@@ -169,16 +186,42 @@ impl MapGenerator {
                 let room_y = room.center().y as u32;
 
                 if horizontal_first {
-                    self.generate_corridor_horizontal(&mut layer, last_x, room_x, last_y, Some(1));
-                    self.generate_corridor_vertical(&mut layer, room_x, last_y, room_y, Some(1));
+                    self.generate_corridor_horizontal(
+                        &mut layer,
+                        last_x,
+                        room_x,
+                        last_y,
+                        self.corridor_padding,
+                    );
+                    self.generate_corridor_vertical(
+                        &mut layer,
+                        room_x,
+                        last_y,
+                        room_y,
+                        self.corridor_padding,
+                    );
                 } else {
-                    self.generate_corridor_vertical(&mut layer, last_x, last_y, room_y, Some(1));
-                    self.generate_corridor_horizontal(&mut layer, last_x, room_x, room_y, Some(1));
+                    self.generate_corridor_vertical(
+                        &mut layer,
+                        last_x,
+                        last_y,
+                        room_y,
+                        self.corridor_padding,
+                    );
+                    self.generate_corridor_horizontal(
+                        &mut layer,
+                        last_x,
+                        room_x,
+                        room_y,
+                        self.corridor_padding,
+                    );
                 }
             }
 
             rooms.push(room);
         }
+
+        self.rewrite_wall_details(&mut layer);
 
         (layer, rooms)
     }
@@ -244,4 +287,475 @@ impl MapGenerator {
             }
         }
     }
+
+    pub fn rewrite_wall_details(&self, layer: &mut Layer) {
+        // rewrite wall patterns that we don't have detail tiles for
+        for x in 0..layer.width {
+            for y in 0..layer.height {
+                self.try_rewrite_thin_horizontal_wall(x, y, layer);
+                self.try_rewrite_thin_vertical_wall(x, y, layer);
+            }
+        }
+
+        // rewrite walls with detail
+        for x in 0..layer.width {
+            for y in 0..layer.height {
+                self.try_rewrite_inner_ul_wall(x, y, layer);
+                self.try_rewrite_inner_ur_wall(x, y, layer);
+                self.try_rewrite_inner_dl_wall(x, y, layer);
+                self.try_rewrite_inner_dr_wall(x, y, layer);
+                self.try_rewrite_outer_ul_wall(x, y, layer);
+                self.try_rewrite_outer_ur_wall(x, y, layer);
+                self.try_rewrite_outer_dl_wall(x, y, layer);
+                self.try_rewrite_outer_dr_wall(x, y, layer);
+            }
+        }
+        for x in 0..layer.width {
+            for y in 0..layer.height {
+                self.try_rewrite_left_wall(x, y, layer);
+                self.try_rewrite_right_wall(x, y, layer);
+            }
+        }
+        for x in 0..layer.width {
+            for y in 0..layer.height {
+                self.try_rewrite_bottom_wall(x, y, layer);
+                self.try_rewrite_top_wall(x, y, layer);
+            }
+        }
+    }
+
+    pub fn try_rewrite_thin_horizontal_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width || y >= layer.height - 2 {
+            return false;
+        }
+
+        let i0 = xytoi(x, y, layer);
+        let i1 = xytoi(x, y + 1, layer);
+        let i2 = xytoi(x, y + 2, layer);
+
+        if let (&Some(tile0), &Some(tile1), &Some(tile2)) = (
+            &layer.data[i0].as_ref(),
+            &layer.data[i1].as_ref(),
+            &layer.data[i2].as_ref(),
+        ) {
+            if tile0.id != GROUND_01_TILE_ID
+                || tile1.id != WALL_01_TILE_ID
+                || tile2.id != GROUND_01_TILE_ID
+            {
+                return false;
+            }
+        }
+
+        layer.data[i0] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_thin_vertical_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 2 || y >= layer.height {
+            return false;
+        }
+
+        let i0 = xytoi(x, y, layer);
+        let i1 = xytoi(x + 1, y, layer);
+        let i2 = xytoi(x + 2, y, layer);
+
+        if let (&Some(tile0), &Some(tile1), &Some(tile2)) = (
+            &layer.data[i0].as_ref(),
+            &layer.data[i1].as_ref(),
+            &layer.data[i2].as_ref(),
+        ) {
+            if tile0.id != GROUND_01_TILE_ID
+                || tile1.id != WALL_01_TILE_ID
+                || tile2.id != GROUND_01_TILE_ID
+            {
+                return false;
+            }
+        }
+
+        layer.data[i0] = Some(Tile {
+            id: WALL_01_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_top_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i0 = xytoi(x, y, layer);
+        let i1 = xytoi(x, y + 1, &layer);
+
+        if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
+            if tile0.id != WALL_01_TILE_ID || tile1.id != GROUND_01_TILE_ID {
+                return false;
+            }
+        }
+
+        layer.data[i0] = Some(Tile {
+            id: WALL_UP_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_bottom_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i0 = xytoi(x, y, layer);
+        let i1 = xytoi(x, y + 1, &layer);
+
+        if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
+            if tile0.id != GROUND_01_TILE_ID || tile1.id != WALL_01_TILE_ID {
+                return false;
+            }
+        }
+
+        layer.data[i1] = Some(Tile {
+            id: WALL_DOWN_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_left_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height {
+            return false;
+        }
+
+        let i0 = xytoi(x, y, layer);
+        let i1 = xytoi(x + 1, y, &layer);
+
+        if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
+            if tile0.id != WALL_01_TILE_ID || tile1.id != GROUND_01_TILE_ID {
+                return false;
+            }
+        }
+
+        layer.data[i0] = Some(Tile {
+            id: WALL_LEFT_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_right_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height {
+            return false;
+        }
+
+        let i0 = xytoi(x, y, layer);
+        let i1 = xytoi(x + 1, y, &layer);
+
+        if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
+            if tile0.id != GROUND_01_TILE_ID || tile1.id != WALL_01_TILE_ID {
+                return false;
+            }
+        }
+
+        layer.data[i1] = Some(Tile {
+            id: WALL_RIGHT_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_inner_ul_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i00 = xytoi(x, y, layer);
+        let i01 = xytoi(x + 1, y, layer);
+        let i10 = xytoi(x, y + 1, layer);
+        let i11 = xytoi(x + 1, y + 1, layer);
+
+        if let (&Some(tile00), &Some(tile01), &Some(tile10), &Some(tile11)) = (
+            &layer.data[i00].as_ref(),
+            &layer.data[i01].as_ref(),
+            &layer.data[i10].as_ref(),
+            &layer.data[i11].as_ref(),
+        ) {
+            if tile00.id != WALL_01_TILE_ID
+                || tile01.id != WALL_01_TILE_ID
+                || tile10.id != WALL_01_TILE_ID
+                || tile11.id != GROUND_01_TILE_ID
+            {
+                return false;
+            }
+        }
+
+        layer.data[i00] = Some(Tile {
+            id: WALL_INNER_UL_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_inner_ur_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i00 = xytoi(x, y, layer);
+        let i01 = xytoi(x + 1, y, layer);
+        let i10 = xytoi(x, y + 1, layer);
+        let i11 = xytoi(x + 1, y + 1, layer);
+
+        if let (&Some(tile00), &Some(tile01), &Some(tile10), &Some(tile11)) = (
+            &layer.data[i00].as_ref(),
+            &layer.data[i01].as_ref(),
+            &layer.data[i10].as_ref(),
+            &layer.data[i11].as_ref(),
+        ) {
+            if tile00.id != WALL_01_TILE_ID
+                || tile01.id != WALL_01_TILE_ID
+                || tile10.id != GROUND_01_TILE_ID
+                || tile11.id != WALL_01_TILE_ID
+            {
+                return false;
+            }
+        }
+
+        layer.data[i01] = Some(Tile {
+            id: WALL_INNER_UR_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_inner_dl_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i00 = xytoi(x, y, layer);
+        let i01 = xytoi(x + 1, y, layer);
+        let i10 = xytoi(x, y + 1, layer);
+        let i11 = xytoi(x + 1, y + 1, layer);
+
+        if let (&Some(tile00), &Some(tile01), &Some(tile10), &Some(tile11)) = (
+            &layer.data[i00].as_ref(),
+            &layer.data[i01].as_ref(),
+            &layer.data[i10].as_ref(),
+            &layer.data[i11].as_ref(),
+        ) {
+            if tile00.id != WALL_01_TILE_ID
+                || tile01.id != GROUND_01_TILE_ID
+                || tile10.id != WALL_01_TILE_ID
+                || tile11.id != WALL_01_TILE_ID
+            {
+                return false;
+            }
+        }
+
+        layer.data[i10] = Some(Tile {
+            id: WALL_INNER_DL_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_inner_dr_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i00 = xytoi(x, y, layer);
+        let i01 = xytoi(x + 1, y, layer);
+        let i10 = xytoi(x, y + 1, layer);
+        let i11 = xytoi(x + 1, y + 1, layer);
+
+        if let (&Some(tile00), &Some(tile01), &Some(tile10), &Some(tile11)) = (
+            &layer.data[i00].as_ref(),
+            &layer.data[i01].as_ref(),
+            &layer.data[i10].as_ref(),
+            &layer.data[i11].as_ref(),
+        ) {
+            if tile00.id != GROUND_01_TILE_ID
+                || tile01.id != WALL_01_TILE_ID
+                || tile10.id != WALL_01_TILE_ID
+                || tile11.id != WALL_01_TILE_ID
+            {
+                return false;
+            }
+        }
+
+        layer.data[i11] = Some(Tile {
+            id: WALL_INNER_DR_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_outer_ul_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i00 = xytoi(x, y, layer);
+        let i01 = xytoi(x + 1, y, layer);
+        let i10 = xytoi(x, y + 1, layer);
+        let i11 = xytoi(x + 1, y + 1, layer);
+
+        if let (&Some(tile00), &Some(tile01), &Some(tile10), &Some(tile11)) = (
+            &layer.data[i00].as_ref(),
+            &layer.data[i01].as_ref(),
+            &layer.data[i10].as_ref(),
+            &layer.data[i11].as_ref(),
+        ) {
+            if tile00.id != GROUND_01_TILE_ID
+                || tile01.id != GROUND_01_TILE_ID
+                || tile10.id != GROUND_01_TILE_ID
+                || tile11.id != WALL_01_TILE_ID
+            {
+                return false;
+            }
+        }
+
+        layer.data[i11] = Some(Tile {
+            id: WALL_OUTER_UL_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_outer_ur_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i00 = xytoi(x, y, layer);
+        let i01 = xytoi(x + 1, y, layer);
+        let i10 = xytoi(x, y + 1, layer);
+        let i11 = xytoi(x + 1, y + 1, layer);
+
+        if let (&Some(tile00), &Some(tile01), &Some(tile10), &Some(tile11)) = (
+            &layer.data[i00].as_ref(),
+            &layer.data[i01].as_ref(),
+            &layer.data[i10].as_ref(),
+            &layer.data[i11].as_ref(),
+        ) {
+            if tile00.id != GROUND_01_TILE_ID
+                || tile01.id != GROUND_01_TILE_ID
+                || tile10.id != WALL_01_TILE_ID
+                || tile11.id != GROUND_01_TILE_ID
+            {
+                return false;
+            }
+        }
+
+        layer.data[i10] = Some(Tile {
+            id: WALL_OUTER_UR_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+    pub fn try_rewrite_outer_dl_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i00 = xytoi(x, y, layer);
+        let i01 = xytoi(x + 1, y, layer);
+        let i10 = xytoi(x, y + 1, layer);
+        let i11 = xytoi(x + 1, y + 1, layer);
+
+        if let (&Some(tile00), &Some(tile01), &Some(tile10), &Some(tile11)) = (
+            &layer.data[i00].as_ref(),
+            &layer.data[i01].as_ref(),
+            &layer.data[i10].as_ref(),
+            &layer.data[i11].as_ref(),
+        ) {
+            if tile00.id != GROUND_01_TILE_ID
+                || tile01.id != WALL_01_TILE_ID
+                || tile10.id != GROUND_01_TILE_ID
+                || tile11.id != GROUND_01_TILE_ID
+            {
+                return false;
+            }
+        }
+
+        layer.data[i01] = Some(Tile {
+            id: WALL_OUTER_DL_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+
+    pub fn try_rewrite_outer_dr_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+        if x >= layer.width - 1 || y >= layer.height - 1 {
+            return false;
+        }
+
+        let i00 = xytoi(x, y, layer);
+        let i01 = xytoi(x + 1, y, layer);
+        let i10 = xytoi(x, y + 1, layer);
+        let i11 = xytoi(x + 1, y + 1, layer);
+
+        if let (&Some(tile00), &Some(tile01), &Some(tile10), &Some(tile11)) = (
+            &layer.data[i00].as_ref(),
+            &layer.data[i01].as_ref(),
+            &layer.data[i10].as_ref(),
+            &layer.data[i11].as_ref(),
+        ) {
+            if tile00.id != WALL_01_TILE_ID
+                || tile01.id != GROUND_01_TILE_ID
+                || tile10.id != GROUND_01_TILE_ID
+                || tile11.id != GROUND_01_TILE_ID
+            {
+                return false;
+            }
+        }
+
+        layer.data[i00] = Some(Tile {
+            id: WALL_OUTER_DR_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        true
+    }
+}
+
+fn xytoi(x: u32, y: u32, layer: &Layer) -> usize {
+    (y * layer.width + x) as usize
+}
+
+fn itoxy(i: usize, layer: &Layer) -> UVec2 {
+    // overflows be damned
+    let i = i as u32;
+    uvec2(i % layer.width, i / layer.width)
 }
