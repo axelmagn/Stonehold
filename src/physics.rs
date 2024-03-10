@@ -48,7 +48,8 @@ impl Physics {
             &mut self.impulse_joints,
             &mut self.multibody_joints,
             &mut self.ccd_solver,
-            Some(&mut self.query_pipeline),
+            // Some(&mut self.query_pipeline),
+            None,
             &(),
             &event_handler,
         );

@@ -1,119 +1,21 @@
-use anyhow::Result;
-use futures::try_join;
 use macroquad::{
-    file::load_string,
-    logging::{debug, info},
     math::{uvec2, Rect, UVec2},
     rand::gen_range,
-    texture::{load_texture, FilterMode},
 };
-use macroquad_tiled::{load_map, Tile, TileSet};
-use macroquad_tiled::{Layer, Map as TileMap};
-use rapier2d::{
-    geometry::{ColliderBuilder, ColliderHandle, ColliderSet},
-    na::vector,
-};
-use std::{collections::HashMap, iter, ops::Range};
+use macroquad_tiled::Layer;
+use macroquad_tiled::Tile;
 
 use crate::constants::{
     CORRIDOR_PADDING, DOOR_CLEARANCE, DOOR_LEFT_CLOSED_TILE_ID, DOOR_LEFT_OPEN_TILE_ID,
     DOOR_RIGHT_CLOSED_TILE_ID, DOOR_RIGHT_OPEN_TILE_ID, FACADE_CENTER_02_TILE_ID,
     FACADE_CENTER_TILE_ID, FACADE_LEFT_TILE_ID, FACADE_RIGHT_TILE_ID, GROUND_01_TILE_ID,
     GROUND_02_TILE_ID, GROUND_03_TILE_ID, MAX_ROOM_COUNT, MAX_ROOM_SIZE, MIN_ROOM_SIZE,
-    MONSTER_PIPE_CLOSED_TILE_ID, POOL_EMPTY_TILE_ID, SOLID_TILES, STAIRS_CENTER_TILE_ID,
-    STAIRS_LEFT_TILE_ID, STAIRS_RIGHT_TILE_ID, TERRAIN_MAP_ID, TILESET_MAP_ID, TILESET_MAP_PATH,
-    TILESET_TEXTURE_PATH, TILE_FILLER_PROB, TILE_MAP_JSON_PATH, WALL_01_TILE_ID, WALL_02_TILE_ID,
-    WALL_03_TILE_ID, WALL_DOWN_TILE_ID, WALL_INNER_DL_ID, WALL_INNER_DR_ID, WALL_INNER_UL_ID,
-    WALL_INNER_UR_ID, WALL_LEFT_TILE_ID, WALL_OUTER_DL_ID, WALL_OUTER_DR_ID, WALL_OUTER_UL_ID,
-    WALL_OUTER_UR_ID, WALL_RIGHT_TILE_ID, WALL_TILE_IDS, WALL_UP_TILE_ID,
+    MONSTER_PIPE_CLOSED_TILE_ID, POOL_EMPTY_TILE_ID, STAIRS_LEFT_TILE_ID, STAIRS_RIGHT_TILE_ID,
+    TILESET_MAP_ID, TILE_FILLER_PROB, WALL_01_TILE_ID, WALL_02_TILE_ID, WALL_03_TILE_ID,
+    WALL_DOWN_TILE_ID, WALL_INNER_DL_ID, WALL_INNER_DR_ID, WALL_INNER_UL_ID, WALL_INNER_UR_ID,
+    WALL_LEFT_TILE_ID, WALL_OUTER_DL_ID, WALL_OUTER_DR_ID, WALL_OUTER_UL_ID, WALL_OUTER_UR_ID,
+    WALL_RIGHT_TILE_ID, WALL_TILE_IDS, WALL_UP_TILE_ID,
 };
-
-pub struct Map {
-    /// tile map loaded from TilEd
-    pub tile_map: TileMap,
-
-    /// physics collider handles
-    pub colliders: HashMap<UVec2, ColliderHandle>,
-
-    /// bitmask of which tiles are solid
-    pub solid_tile_mask: Vec<bool>,
-}
-
-impl Map {
-    pub fn new(tile_map: TileMap) -> Self {
-        let solid_tile_mask =
-            Self::create_solid_tile_mask(&tile_map.tilesets[TILESET_MAP_ID], &SOLID_TILES);
-
-        Self {
-            tile_map,
-            colliders: HashMap::new(),
-            solid_tile_mask,
-        }
-    }
-
-    /// Load the map from a constant path
-    pub async fn load() -> Result<Self> {
-        // load assets concurrently for faster load times
-        let (tile_texture, tile_map_json) = try_join!(
-            load_texture(TILESET_TEXTURE_PATH),
-            load_string(TILE_MAP_JSON_PATH)
-        )?;
-
-        // we want tiles to have crisp pixels
-        tile_texture.set_filter(FilterMode::Nearest);
-
-        // construct tile map from loaded assets
-        let tile_map = load_map(&tile_map_json, &[(TILESET_MAP_PATH, tile_texture)], &[])?;
-
-        Ok(Self::new(tile_map))
-    }
-
-    /// draw the map in worldspace
-    pub fn draw(&self) {
-        let width = self.tile_map.layers[TERRAIN_MAP_ID].width as f32;
-        let height = self.tile_map.layers[TERRAIN_MAP_ID].height as f32;
-        self.tile_map.draw_tiles(
-            TERRAIN_MAP_ID,
-            // TODO(axelmagn): get from function
-            Rect::new(0., 0., width, height),
-            None,
-        );
-    }
-
-    pub fn init_colliders(&mut self, collider_set: &mut ColliderSet) {
-        for (x, y, tile) in self.tile_map.tiles(TERRAIN_MAP_ID, None) {
-            if let Some(tile) = tile {
-                if self.is_tile_solid(tile.id) {
-                    let coord = UVec2::new(x, y);
-                    let collider = ColliderBuilder::cuboid(0.5, 0.5)
-                        .translation(vector![x as f32 + 0.5, y as f32 + 0.5])
-                        .build();
-                    self.colliders.insert(coord, collider_set.insert(collider));
-                }
-            }
-        }
-    }
-
-    /// Calculate which tiles are solid
-    fn create_solid_tile_mask(tileset: &TileSet, solid_tile_ranges: &[Range<u32>]) -> Vec<bool> {
-        // ugly calculation because the library authors couldn't bother to  store the tilecount field
-        let tile_count: i32 = (tileset.texture.height() as i32 + tileset.spacing
-            - 2 * tileset.margin)
-            / (tileset.tileheight + tileset.spacing)
-            * tileset.columns as i32;
-        let mut out: Vec<bool> = iter::repeat(false).take(tile_count as usize).collect();
-        for range in solid_tile_ranges {
-            for i in range.clone() {
-                out[i as usize] = true;
-            }
-        }
-        out
-    }
-
-    fn is_tile_solid(&self, tile_id: u32) -> bool {
-        self.solid_tile_mask[tile_id as usize]
-    }
-}
 
 pub struct MapGenerator {
     pub ground_tile_id: u32,
@@ -504,7 +406,7 @@ impl MapGenerator {
                 && tile01.id == GROUND_01_TILE_ID
                 && tile11.id == WALL_01_TILE_ID
                 && tile21.id == WALL_01_TILE_ID)
-                || !(tile00.id == GROUND_01_TILE_ID
+                && !(tile00.id == GROUND_01_TILE_ID
                     && tile10.id == WALL_01_TILE_ID
                     && tile20.id == WALL_01_TILE_ID
                     && tile01.id == WALL_01_TILE_ID
@@ -581,7 +483,7 @@ impl MapGenerator {
                 && tile01.id == GROUND_01_TILE_ID
                 && tile11.id == WALL_01_TILE_ID
                 && tile21.id == WALL_01_TILE_ID)
-                || !(tile00.id == GROUND_01_TILE_ID
+                && !(tile00.id == GROUND_01_TILE_ID
                     && tile10.id == WALL_01_TILE_ID
                     && tile20.id == WALL_01_TILE_ID
                     && tile01.id == WALL_01_TILE_ID
@@ -1222,4 +1124,177 @@ fn _itoxy(i: usize, layer: &Layer) -> UVec2 {
     // overflows be damned
     let i = i as u32;
     uvec2(i % layer.width, i / layer.width)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mapgen_corner_tile_horizontal_performs_rewrite() {
+        // create test layer
+        let (width, height) = (3, 2);
+        let mut layer = Layer {
+            width,
+            height,
+            ..Default::default()
+        };
+
+        // fill with walls
+        for _i in 0..(width * height) {
+            layer.data.push(Some(Tile {
+                id: WALL_01_TILE_ID,
+                tileset: "".into(),
+                attrs: "".into(),
+            }));
+        }
+
+        // create mapgen
+        let mapgen = MapGenerator::new(uvec2(width, height));
+
+        // check that the rewrite does not trigger on the base case
+        let did_rewrite = mapgen.try_rewrite_double_corner_horizontal(0, 0, &mut layer);
+        assert_eq!(did_rewrite, false);
+        for i in 0..(width * height) {
+            if let &Some(tile) = &layer.data[i as usize].as_ref() {
+                assert_eq!(tile.id, WALL_01_TILE_ID);
+                continue;
+            }
+            panic!("None tile found");
+        }
+
+        // create double corner pattern (variant 1)
+        let i = xytoi(0, 0, &layer);
+        layer.data[i] = Some(Tile {
+            id: GROUND_01_TILE_ID,
+            tileset: "".into(),
+            attrs: "".into(),
+        });
+        let i = xytoi(2, 1, &layer);
+        layer.data[i] = Some(Tile {
+            id: GROUND_01_TILE_ID,
+            tileset: "".into(),
+            attrs: "".into(),
+        });
+
+        // check that double corner variant 1 rewrites correctly
+        let did_rewrite = mapgen.try_rewrite_double_corner_horizontal(0, 0, &mut layer);
+        assert_eq!(did_rewrite, true);
+        for i in 0..(width * height) {
+            if let &Some(tile) = &layer.data[i as usize].as_ref() {
+                assert_eq!(tile.id, WALL_01_TILE_ID);
+                continue;
+            }
+            panic!("None tile found");
+        }
+
+        // create double corner pattern (variant 2)
+        let i = xytoi(0, 1, &layer);
+        layer.data[i] = Some(Tile {
+            id: GROUND_01_TILE_ID,
+            tileset: "".into(),
+            attrs: "".into(),
+        });
+        let i = xytoi(2, 0, &layer);
+        layer.data[i] = Some(Tile {
+            id: GROUND_01_TILE_ID,
+            tileset: "".into(),
+            attrs: "".into(),
+        });
+
+        // check that double corner variant 2 rewrites correctly
+        let did_rewrite = mapgen.try_rewrite_double_corner_horizontal(0, 0, &mut layer);
+        assert_eq!(did_rewrite, true);
+        for i in 0..(width * height) {
+            if let &Some(tile) = &layer.data[i as usize].as_ref() {
+                assert_eq!(tile.id, WALL_01_TILE_ID);
+                continue;
+            }
+            panic!("None tile found");
+        }
+    }
+
+    #[test]
+    fn test_mapgen_corner_tile_vertical_performs_rewrite() {
+        // create test layer
+        let (width, height) = (2, 3);
+        let mut layer = Layer {
+            width,
+            height,
+            ..Default::default()
+        };
+
+        // fill with walls
+        for _i in 0..(width * height) {
+            layer.data.push(Some(Tile {
+                id: WALL_01_TILE_ID,
+                tileset: "".into(),
+                attrs: "".into(),
+            }));
+        }
+
+        // create mapgen
+        let mapgen = MapGenerator::new(uvec2(width, height));
+
+        // check that the rewrite does not trigger on the base case
+        let did_rewrite = mapgen.try_rewrite_double_corner_vertical(0, 0, &mut layer);
+        assert_eq!(did_rewrite, false);
+        for i in 0..(width * height) {
+            if let &Some(tile) = &layer.data[i as usize].as_ref() {
+                assert_eq!(tile.id, WALL_01_TILE_ID);
+                continue;
+            }
+            panic!("None tile found");
+        }
+
+        // create double corner pattern (variant 1)
+        let i = xytoi(0, 0, &layer);
+        layer.data[i] = Some(Tile {
+            id: GROUND_01_TILE_ID,
+            tileset: "".into(),
+            attrs: "".into(),
+        });
+        let i = xytoi(1, 2, &layer);
+        layer.data[i] = Some(Tile {
+            id: GROUND_01_TILE_ID,
+            tileset: "".into(),
+            attrs: "".into(),
+        });
+
+        // check that double corner variant 1 rewrites correctly
+        let did_rewrite = mapgen.try_rewrite_double_corner_vertical(0, 0, &mut layer);
+        assert_eq!(did_rewrite, true);
+        for i in 0..(width * height) {
+            if let &Some(tile) = &layer.data[i as usize].as_ref() {
+                assert_eq!(tile.id, WALL_01_TILE_ID);
+                continue;
+            }
+            panic!("None tile found");
+        }
+
+        // create double corner pattern (variant 2)
+        let i = xytoi(1, 0, &layer);
+        layer.data[i] = Some(Tile {
+            id: GROUND_01_TILE_ID,
+            tileset: "".into(),
+            attrs: "".into(),
+        });
+        let i = xytoi(0, 2, &layer);
+        layer.data[i] = Some(Tile {
+            id: GROUND_01_TILE_ID,
+            tileset: "".into(),
+            attrs: "".into(),
+        });
+
+        // check that double corner variant 2 rewrites correctly
+        let did_rewrite = mapgen.try_rewrite_double_corner_vertical(0, 0, &mut layer);
+        assert_eq!(did_rewrite, true);
+        for i in 0..(width * height) {
+            if let &Some(tile) = &layer.data[i as usize].as_ref() {
+                assert_eq!(tile.id, WALL_01_TILE_ID);
+                continue;
+            }
+            panic!("None tile found");
+        }
+    }
 }

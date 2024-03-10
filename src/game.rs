@@ -2,7 +2,10 @@ use crate::{
     camera::Cameras,
     character::Character,
     constants::TERRAIN_MAP_ID,
-    map::{Map, MapGenResult, MapGenerator},
+    map::{
+        mapgen::{MapGenResult, MapGenerator},
+        Map,
+    },
     physics::Physics,
 };
 use anyhow::Result;
