@@ -2,6 +2,7 @@ use anyhow::Result;
 use futures::try_join;
 use macroquad::{
     file::load_string,
+    logging::{debug, info},
     math::{uvec2, Rect, UVec2},
     rand::gen_range,
     texture::{load_texture, FilterMode},
@@ -15,12 +16,16 @@ use rapier2d::{
 use std::{collections::HashMap, iter, ops::Range};
 
 use crate::constants::{
-    CORRIDOR_PADDING, FACADE_CENTER_TILE_ID, FACADE_LEFT_TILE_ID, FACADE_RIGHT_TILE_ID,
-    GROUND_01_TILE_ID, MAX_ROOM_COUNT, MAX_ROOM_SIZE, MIN_ROOM_SIZE, SOLID_TILES, TERRAIN_MAP_ID,
-    TILESET_MAP_ID, TILESET_MAP_PATH, TILESET_TEXTURE_PATH, TILE_MAP_JSON_PATH, WALL_01_TILE_ID,
-    WALL_DOWN_TILE_ID, WALL_INNER_DL_ID, WALL_INNER_DR_ID, WALL_INNER_UL_ID, WALL_INNER_UR_ID,
-    WALL_LEFT_TILE_ID, WALL_OUTER_DL_ID, WALL_OUTER_DR_ID, WALL_OUTER_UL_ID, WALL_OUTER_UR_ID,
-    WALL_RIGHT_TILE_ID, WALL_TILE_IDS, WALL_UP_TILE_ID,
+    CORRIDOR_PADDING, DOOR_CLEARANCE, DOOR_LEFT_CLOSED_TILE_ID, DOOR_LEFT_OPEN_TILE_ID,
+    DOOR_RIGHT_CLOSED_TILE_ID, DOOR_RIGHT_OPEN_TILE_ID, FACADE_CENTER_02_TILE_ID,
+    FACADE_CENTER_TILE_ID, FACADE_LEFT_TILE_ID, FACADE_RIGHT_TILE_ID, GROUND_01_TILE_ID,
+    GROUND_02_TILE_ID, GROUND_03_TILE_ID, MAX_ROOM_COUNT, MAX_ROOM_SIZE, MIN_ROOM_SIZE,
+    MONSTER_PIPE_CLOSED_TILE_ID, POOL_EMPTY_TILE_ID, SOLID_TILES, STAIRS_CENTER_TILE_ID,
+    STAIRS_LEFT_TILE_ID, STAIRS_RIGHT_TILE_ID, TERRAIN_MAP_ID, TILESET_MAP_ID, TILESET_MAP_PATH,
+    TILESET_TEXTURE_PATH, TILE_FILLER_PROB, TILE_MAP_JSON_PATH, WALL_01_TILE_ID, WALL_02_TILE_ID,
+    WALL_03_TILE_ID, WALL_DOWN_TILE_ID, WALL_INNER_DL_ID, WALL_INNER_DR_ID, WALL_INNER_UL_ID,
+    WALL_INNER_UR_ID, WALL_LEFT_TILE_ID, WALL_OUTER_DL_ID, WALL_OUTER_DR_ID, WALL_OUTER_UL_ID,
+    WALL_OUTER_UR_ID, WALL_RIGHT_TILE_ID, WALL_TILE_IDS, WALL_UP_TILE_ID,
 };
 
 pub struct Map {
@@ -120,6 +125,14 @@ pub struct MapGenerator {
     pub max_room_size: UVec2,
     pub max_room_count: u32,
     pub corridor_padding: Option<u32>,
+    pub door_clearance: u32,
+}
+
+pub struct MapGenResult {
+    pub layer: Layer,
+    pub rooms: Vec<Rect>,
+    pub guard_doors: Vec<UVec2>,
+    pub exit_door: UVec2,
 }
 
 impl MapGenerator {
@@ -133,10 +146,11 @@ impl MapGenerator {
             max_room_size: MAX_ROOM_SIZE,
             max_room_count: MAX_ROOM_COUNT,
             corridor_padding: CORRIDOR_PADDING,
+            door_clearance: DOOR_CLEARANCE,
         }
     }
 
-    pub fn generate_layer(&self) -> (Layer, Vec<Rect>) {
+    pub fn generate_layer(&self) -> MapGenResult {
         let mut layer = Layer {
             width: self.size.x,
             height: self.size.y,
@@ -224,7 +238,61 @@ impl MapGenerator {
 
         self.rewrite_wall_details(&mut layer);
 
-        (layer, rooms)
+        // TODO: generate guard counts & locations
+        let num_doors = rooms.len();
+
+        // generate guard doors
+        let mut guard_doors = Vec::new();
+        for _ in 0..10 {
+            guard_doors = self.generate_guard_doors(num_doors, &mut layer);
+            if num_doors == guard_doors.len() {
+                break;
+            }
+        }
+        assert_eq!(num_doors, guard_doors.len());
+
+        // generate exit door
+        let exit_door = guard_doors.remove(gen_range(0, num_doors));
+        self.rewrite_exit_door(exit_door, &mut layer);
+
+        // add fillers
+        self.rewrite_random_filler(
+            WALL_01_TILE_ID,
+            WALL_02_TILE_ID,
+            TILE_FILLER_PROB,
+            &mut layer,
+        );
+        self.rewrite_random_filler(
+            WALL_01_TILE_ID,
+            WALL_03_TILE_ID,
+            TILE_FILLER_PROB,
+            &mut layer,
+        );
+        self.rewrite_random_filler(
+            GROUND_01_TILE_ID,
+            GROUND_02_TILE_ID,
+            TILE_FILLER_PROB,
+            &mut layer,
+        );
+        self.rewrite_random_filler(
+            GROUND_01_TILE_ID,
+            GROUND_03_TILE_ID,
+            TILE_FILLER_PROB,
+            &mut layer,
+        );
+        self.rewrite_random_filler(
+            FACADE_CENTER_TILE_ID,
+            FACADE_CENTER_02_TILE_ID,
+            TILE_FILLER_PROB * 10.,
+            &mut layer,
+        );
+
+        MapGenResult {
+            layer,
+            rooms,
+            guard_doors,
+            exit_door,
+        }
     }
 
     pub fn generate_room(&self, layer: &mut Layer, dest: UVec2, size: UVec2) {
@@ -298,6 +366,7 @@ impl MapGenerator {
                     needs_scan = false;
                     needs_scan = self.try_rewrite_thin_horizontal_wall(x, y, layer) || needs_scan;
                     needs_scan = self.try_rewrite_thin_vertical_wall(x, y, layer) || needs_scan;
+                    // TODO: one of these isn't working correctly. looks like maybe vertical one
                     needs_scan =
                         self.try_rewrite_double_corner_horizontal(x, y, layer) || needs_scan;
                     needs_scan = self.try_rewrite_double_corner_vertical(x, y, layer) || needs_scan;
@@ -340,7 +409,7 @@ impl MapGenerator {
         }
     }
 
-    pub fn try_rewrite_thin_horizontal_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_thin_horizontal_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width || y >= layer.height - 2 {
             return false;
         }
@@ -371,7 +440,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_thin_vertical_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_thin_vertical_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 2 || y >= layer.height {
             return false;
         }
@@ -402,7 +471,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_double_corner_horizontal(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_double_corner_horizontal(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 2 || y >= layer.height - 1 {
             return false;
         }
@@ -479,7 +548,7 @@ impl MapGenerator {
 
         true
     }
-    pub fn try_rewrite_double_corner_vertical(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_double_corner_vertical(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height - 2 {
             return false;
         }
@@ -557,7 +626,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_top_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_top_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width || y >= layer.height - 1 {
             return false;
         }
@@ -580,7 +649,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_bottom_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_bottom_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width || y >= layer.height - 1 {
             return false;
         }
@@ -603,7 +672,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_left_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_left_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height {
             return false;
         }
@@ -626,7 +695,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_right_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_right_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height {
             return false;
         }
@@ -649,7 +718,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_inner_ul_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_inner_ul_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height - 1 {
             return false;
         }
@@ -683,7 +752,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_inner_ur_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_inner_ur_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height - 1 {
             return false;
         }
@@ -717,7 +786,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_inner_dl_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_inner_dl_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height - 1 {
             return false;
         }
@@ -751,7 +820,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_inner_dr_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_inner_dr_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height - 1 {
             return false;
         }
@@ -785,7 +854,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_outer_ul_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_outer_ul_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height - 1 {
             return false;
         }
@@ -819,7 +888,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_outer_ur_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_outer_ur_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height - 1 {
             return false;
         }
@@ -852,7 +921,7 @@ impl MapGenerator {
 
         true
     }
-    pub fn try_rewrite_outer_dl_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_outer_dl_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height - 1 {
             return false;
         }
@@ -886,7 +955,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_outer_dr_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_outer_dr_wall(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width - 1 || y >= layer.height - 1 {
             return false;
         }
@@ -920,7 +989,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_center_facades(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_center_facades(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width || y >= layer.height - 1 {
             return false;
         }
@@ -943,7 +1012,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_left_facades(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_left_facades(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width || y >= layer.height - 1 {
             return false;
         }
@@ -966,7 +1035,7 @@ impl MapGenerator {
         true
     }
 
-    pub fn try_rewrite_right_facades(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
+    fn try_rewrite_right_facades(&self, x: u32, y: u32, layer: &mut Layer) -> bool {
         if x >= layer.width || y >= layer.height - 1 {
             return false;
         }
@@ -988,13 +1057,168 @@ impl MapGenerator {
 
         true
     }
+
+    fn rewrite_exit_door(&self, pos: UVec2, layer: &mut Layer) {
+        // rewrite doors to closed
+        let i = xytoi(pos.x, pos.y, layer);
+        layer.data[i] = Some(Tile {
+            id: MONSTER_PIPE_CLOSED_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        let i = xytoi(pos.x + 1, pos.y, layer);
+        layer.data[i] = Some(Tile {
+            id: DOOR_LEFT_CLOSED_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        let i = xytoi(pos.x + 2, pos.y, layer);
+        layer.data[i] = Some(Tile {
+            id: DOOR_RIGHT_CLOSED_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        let i = xytoi(pos.x + 3, pos.y, layer);
+        layer.data[i] = Some(Tile {
+            id: MONSTER_PIPE_CLOSED_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+
+        // put some stairs under them
+        let i = xytoi(pos.x, pos.y + 1, layer);
+        layer.data[i] = Some(Tile {
+            id: POOL_EMPTY_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        let i = xytoi(pos.x + 1, pos.y + 1, layer);
+        layer.data[i] = Some(Tile {
+            id: STAIRS_LEFT_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        let i = xytoi(pos.x + 2, pos.y + 1, layer);
+        layer.data[i] = Some(Tile {
+            id: STAIRS_RIGHT_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+        let i = xytoi(pos.x + 3, pos.y + 1, layer);
+        layer.data[i] = Some(Tile {
+            id: POOL_EMPTY_TILE_ID,
+            tileset: self.tileset_id.clone(),
+            attrs: String::new(),
+        });
+    }
+
+    fn generate_guard_doors(&self, max_doors: usize, layer: &mut Layer) -> Vec<UVec2> {
+        let mut candidates: Vec<UVec2> = Vec::new();
+        for x in 0..layer.width {
+            for y in 0..layer.height {
+                if self.check_door_candidate(x, y, layer) {
+                    candidates.push(uvec2(x, y));
+                }
+            }
+        }
+
+        let mut doors: Vec<UVec2> = Vec::new();
+        while doors.len() < max_doors && candidates.len() > 0 {
+            let pos = candidates.remove(gen_range(0, candidates.len()));
+
+            // we have to check again, since doors are 2-wide their placements can interfere
+            if !self.check_door_candidate(pos.x, pos.y, layer) {
+                continue;
+            }
+
+            let i = xytoi(pos.x + 1, pos.y, layer);
+            layer.data[i] = Some(Tile {
+                id: DOOR_LEFT_OPEN_TILE_ID,
+                tileset: self.tileset_id.clone(),
+                attrs: String::new(),
+            });
+            let i = xytoi(pos.x + 2, pos.y, layer);
+            layer.data[i] = Some(Tile {
+                id: DOOR_RIGHT_OPEN_TILE_ID,
+                tileset: self.tileset_id.clone(),
+                attrs: String::new(),
+            });
+
+            doors.push(pos);
+        }
+
+        doors
+    }
+
+    /// Check if a location is a candidate for door placement
+    fn check_door_candidate(&self, x: u32, y: u32, layer: &Layer) -> bool {
+        if x + 4 > layer.width || y + self.door_clearance > layer.height {
+            return false;
+        }
+        for x in x..(x + 4) {
+            // check if we can place door on a facade
+            let i = xytoi(x, y, layer);
+            if let &Some(tile) = &layer.data[i].as_ref() {
+                if tile.id != FACADE_CENTER_TILE_ID {
+                    return false;
+                }
+            }
+
+            // check if there is clearance beneath the door
+            for y in (y + 1)..(y + self.door_clearance) {
+                let i = xytoi(x, y, layer);
+                if let &Some(tile) = &layer.data[i].as_ref() {
+                    if tile.id != GROUND_01_TILE_ID {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    fn rewrite_random_filler(&self, src: u32, dst: u32, prob: f32, layer: &mut Layer) -> u32 {
+        let mut count = 0;
+
+        for x in 1..(layer.width - 1) {
+            for y in 1..(layer.height - 1) {
+                let i = xytoi(x, y, layer);
+
+                // match src tile
+                if let &Some(tile) = &layer.data[i].as_ref() {
+                    if tile.id != src {
+                        continue;
+                    }
+                }
+
+                // roll the dice
+                let sample = gen_range(0., 1.);
+                if sample >= prob {
+                    continue;
+                }
+
+                // rewrite to dst
+                layer.data[i] = Some(Tile {
+                    id: dst,
+                    tileset: self.tileset_id.clone(),
+                    attrs: String::new(),
+                });
+
+                count += 1;
+            }
+        }
+
+        count
+    }
 }
 
 fn xytoi(x: u32, y: u32, layer: &Layer) -> usize {
     (y * layer.width + x) as usize
 }
 
-fn itoxy(i: usize, layer: &Layer) -> UVec2 {
+// unused inverse of xytoi (saved for a rainy;d)
+fn _itoxy(i: usize, layer: &Layer) -> UVec2 {
     // overflows be damned
     let i = i as u32;
     uvec2(i % layer.width, i / layer.width)

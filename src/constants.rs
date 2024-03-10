@@ -1,9 +1,7 @@
 use std::ops::Range;
 
-use macroquad::math::{uvec2, vec2, UVec2, Vec2};
+use macroquad::math::{uvec2, UVec2};
 use rapier2d::dynamics::CoefficientCombineRule;
-
-use crate::map::MapGenerator;
 
 /// Resolution of the simulated screen
 // pub const SIMULATED_RESOLUTION: UVec2 = UVec2::new(320, 240);
@@ -30,9 +28,11 @@ pub const TILE_MAP_JSON_PATH: &str = "assets/tiled/export/sandbox03.tmj";
 
 // TODO(axelmagn): fill this out
 /// Tile ID ranges which should be treated as solid
-pub const SOLID_TILES: [Range<u32>; 3] = [
+pub const SOLID_TILES: &[Range<u32>] = &[
     Range { start: 0, end: 6 },
-    Range { start: 12, end: 18 },
+    Range { start: 12, end: 14 },
+    Range { start: 15, end: 18 },
+    Range { start: 19, end: 21 },
     Range { start: 24, end: 28 },
 ];
 
@@ -40,8 +40,13 @@ pub const MIN_ROOM_SIZE: UVec2 = uvec2(10, 10);
 pub const MAX_ROOM_SIZE: UVec2 = uvec2(20, 20);
 pub const MAX_ROOM_COUNT: u32 = 20;
 pub const CORRIDOR_PADDING: Option<u32> = Some(2);
+pub const DOOR_CLEARANCE: u32 = 8;
+pub const TILE_FILLER_PROB: f32 = 0.003;
 
 pub const WALL_01_TILE_ID: u32 = 0;
+pub const WALL_02_TILE_ID: u32 = 12;
+pub const WALL_03_TILE_ID: u32 = 24;
+
 pub const WALL_UP_TILE_ID: u32 = 2;
 pub const WALL_DOWN_TILE_ID: u32 = 26;
 pub const WALL_LEFT_TILE_ID: u32 = 13;
@@ -73,8 +78,26 @@ pub const WALL_TILE_IDS: &[u32] = &[
 pub const FACADE_CENTER_TILE_ID: u32 = 40;
 pub const FACADE_LEFT_TILE_ID: u32 = 57;
 pub const FACADE_RIGHT_TILE_ID: u32 = 59;
+pub const FACADE_CENTER_02_TILE_ID: u32 = 14;
 
 pub const GROUND_01_TILE_ID: u32 = 48;
+pub const GROUND_02_TILE_ID: u32 = 49;
+pub const GROUND_03_TILE_ID: u32 = 42;
+
+pub const DOOR_LEFT_CLOSED_TILE_ID: u32 = 46;
+pub const DOOR_RIGHT_CLOSED_TILE_ID: u32 = 47;
+pub const DOOR_LEFT_OPEN_TILE_ID: u32 = 10;
+pub const DOOR_RIGHT_OPEN_TILE_ID: u32 = 11;
+
+pub const STAIRS_LEFT_TILE_ID: u32 = 36;
+pub const STAIRS_CENTER_TILE_ID: u32 = 37;
+pub const STAIRS_RIGHT_TILE_ID: u32 = 38;
+
+pub const MONSTER_PIPE_CLOSED_TILE_ID: u32 = 19;
+pub const MONSTER_PIPE_OPEN_TILE_ID: u32 = 20;
+
+pub const POOL_EMPTY_TILE_ID: u32 = 31;
+pub const POOL_FULL_TILE_ID: u32 = 32;
 
 pub const PLAYER_ACCELERATION: f32 = 48.;
 pub const PLAYER_BRAKING: f32 = 10.;

@@ -1,8 +1,8 @@
 use crate::{
     camera::Cameras,
     character::Character,
-    constants::{TERRAIN_MAP_ID, TILESET_MAP_ID},
-    map::{Map, MapGenerator},
+    constants::TERRAIN_MAP_ID,
+    map::{Map, MapGenResult, MapGenerator},
     physics::Physics,
 };
 use anyhow::Result;
@@ -28,45 +28,16 @@ pub struct Game {
 impl Game {
     pub fn new(map: Map) -> Self {
         let mut physics = Physics::default();
-        // TODO(axelmagn): dynamic position
-        // let player = Character::create_player(
-        //     PLAYER_START_POSITION,
-        //     &mut physics.colliders,
-        //     &mut physics.bodies,
-        // );
-
-        // let guards = GUARD_START_POSITIONS
-        //     .iter()
-        //     .map(|pos| Character::create_guard(*pos, &mut physics.colliders, &mut physics.bodies))
-        //     .collect();
-
-        // DEBUG: mapgen (BROKEN)
-
-        // random seed
-        // get_time varies *enough* that the seed should be random between runs
         let seed = (get_time() % 1. * (u64::MAX as f64)) as u64;
         info!("Random Seed: {}", seed);
         srand(seed);
 
-        // let mapgen = MapGenerator {
-        //     ground_tile_id: 48,
-        //     wall_tile_id: 0,
-        //     tileset_id: TILESET_MAP_ID.into(),
-        //     size: uvec2(
-        //         map.tile_map.raw_tiled_map.width,
-        //         map.tile_map.raw_tiled_map.height,
-        //     ),
-        //     min_room_size: uvec2(10, 10),
-        //     max_room_size: uvec2(15, 15),
-        //     max_room_count: 10,
-        // };
         let mapgen = MapGenerator::new(uvec2(
             map.tile_map.raw_tiled_map.width,
             map.tile_map.raw_tiled_map.height,
         ));
 
-        let (_, _) = mapgen.generate_layer();
-        let (layer, rooms) = mapgen.generate_layer();
+        let MapGenResult { rooms, layer, .. } = mapgen.generate_layer();
         let mut map = map;
         map.tile_map.layers.insert(TERRAIN_MAP_ID.into(), layer);
         info!("rooms: {:?}", rooms);
