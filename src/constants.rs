@@ -38,7 +38,7 @@ pub const SOLID_TILES: &[Range<u32>] = &[
 
 pub const MIN_ROOM_SIZE: UVec2 = uvec2(10, 10);
 pub const MAX_ROOM_SIZE: UVec2 = uvec2(20, 20);
-pub const MAX_ROOM_COUNT: u32 = 20;
+pub const MAX_ROOM_COUNT: u32 = 50;
 pub const CORRIDOR_PADDING: Option<u32> = Some(2);
 pub const DOOR_CLEARANCE: u32 = 8;
 pub const TILE_FILLER_PROB: f32 = 0.003;

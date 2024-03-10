@@ -504,7 +504,7 @@ impl MapGenerator {
                 && tile01.id == GROUND_01_TILE_ID
                 && tile11.id == WALL_01_TILE_ID
                 && tile21.id == WALL_01_TILE_ID)
-                || (tile00.id == GROUND_01_TILE_ID
+                || !(tile00.id == GROUND_01_TILE_ID
                     && tile10.id == WALL_01_TILE_ID
                     && tile20.id == WALL_01_TILE_ID
                     && tile01.id == WALL_01_TILE_ID
@@ -581,7 +581,7 @@ impl MapGenerator {
                 && tile01.id == GROUND_01_TILE_ID
                 && tile11.id == WALL_01_TILE_ID
                 && tile21.id == WALL_01_TILE_ID)
-                || (tile00.id == GROUND_01_TILE_ID
+                || !(tile00.id == GROUND_01_TILE_ID
                     && tile10.id == WALL_01_TILE_ID
                     && tile20.id == WALL_01_TILE_ID
                     && tile01.id == WALL_01_TILE_ID
