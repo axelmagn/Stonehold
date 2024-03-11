@@ -90,14 +90,14 @@ pub const DOOR_LEFT_OPEN_TILE_ID: u32 = 10;
 pub const DOOR_RIGHT_OPEN_TILE_ID: u32 = 11;
 
 pub const STAIRS_LEFT_TILE_ID: u32 = 36;
-pub const STAIRS_CENTER_TILE_ID: u32 = 37;
+pub const _STAIRS_CENTER_TILE_ID: u32 = 37;
 pub const STAIRS_RIGHT_TILE_ID: u32 = 38;
 
 pub const MONSTER_PIPE_CLOSED_TILE_ID: u32 = 19;
-pub const MONSTER_PIPE_OPEN_TILE_ID: u32 = 20;
+pub const _MONSTER_PIPE_OPEN_TILE_ID: u32 = 20;
 
 pub const POOL_EMPTY_TILE_ID: u32 = 31;
-pub const POOL_FULL_TILE_ID: u32 = 32;
+pub const _POOL_FULL_TILE_ID: u32 = 32;
 
 pub const PLAYER_ACCELERATION: f32 = 48.;
 pub const PLAYER_BRAKING: f32 = 10.;
@@ -108,6 +108,7 @@ pub const PLAYER_MASS: f32 = 100.;
 pub const PLAYER_RADIUS: f32 = 0.5;
 pub const PLAYER_RESTITUTION: f32 = 0.5;
 pub const PLAYER_SPRITE_ID: u32 = 85;
+pub const PLAYER_MAX_HEALTH: u32 = 3;
 
 pub const GUARD_ACCELERATION: f32 = 32.;
 pub const GUARD_BRAKING: f32 = 10.;
@@ -118,3 +119,4 @@ pub const GUARD_MASS: f32 = 100.;
 pub const GUARD_RADIUS: f32 = 0.5;
 pub const GUARD_RESTITUTION: f32 = 0.5;
 pub const GUARD_SPRITE_ID: u32 = 96;
+pub const GUARD_MAX_HEALTH: u32 = 3;

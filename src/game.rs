@@ -1,7 +1,10 @@
+use std::collections::VecDeque;
+
 use crate::{
     camera::Cameras,
     character::Character,
     constants::TERRAIN_MAP_ID,
+    event::{EventHandler, GameEvent},
     map::{
         mapgen::{MapGenResult, MapGenerator},
         Map,
@@ -26,6 +29,7 @@ pub struct Game {
     pub guards: Vec<Character>,
     pub physics: Physics,
     pub cameras: Cameras,
+    pub events: VecDeque<GameEvent>,
 }
 
 impl Game {
@@ -64,6 +68,7 @@ impl Game {
             guards,
             physics,
             cameras: Cameras::new(),
+            events: VecDeque::new(),
         }
     }
 
@@ -102,6 +107,8 @@ impl Game {
         while let Ok(collision_event) = collision_recv.try_recv() {
             // Handle the collision event.
             info!("Received collision event: {:?}", collision_event);
+            self.events
+                .push_back(GameEvent::CollisionEvent(collision_event));
         }
         while let Ok(contact_force_event) = contact_force_recv.try_recv() {
             // Handle the contact force event.
@@ -153,5 +160,11 @@ impl Game {
         set_camera(&self.cameras.screen_camera);
         self.cameras.draw_world_render_to_screen();
         self.cameras.draw_ui_render_to_screen();
+    }
+}
+
+impl EventHandler for Game {
+    fn handle_event(&mut self, event: &GameEvent) {
+        todo!()
     }
 }

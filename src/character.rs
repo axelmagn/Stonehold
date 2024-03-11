@@ -14,10 +14,10 @@ use rapier2d::{
 use crate::{
     constants::{
         GUARD_ACCELERATION, GUARD_BRAKING, GUARD_FRICTION, GUARD_FRICTION_COMBINE_RULE,
-        GUARD_LINEAR_DAMPING, GUARD_MASS, GUARD_RADIUS, GUARD_RESTITUTION, GUARD_SPRITE_ID,
-        PLAYER_ACCELERATION, PLAYER_BRAKING, PLAYER_FRICTION, PLAYER_FRICTION_COMBINE_RULE,
-        PLAYER_LINEAR_DAMPING, PLAYER_MASS, PLAYER_RADIUS, PLAYER_RESTITUTION, PLAYER_SPRITE_ID,
-        TILESET_MAP_ID,
+        GUARD_LINEAR_DAMPING, GUARD_MASS, GUARD_MAX_HEALTH, GUARD_RADIUS, GUARD_RESTITUTION,
+        GUARD_SPRITE_ID, PLAYER_ACCELERATION, PLAYER_BRAKING, PLAYER_FRICTION,
+        PLAYER_FRICTION_COMBINE_RULE, PLAYER_LINEAR_DAMPING, PLAYER_MASS, PLAYER_MAX_HEALTH,
+        PLAYER_RADIUS, PLAYER_RESTITUTION, PLAYER_SPRITE_ID, TILESET_MAP_ID,
     },
     physics::Physics,
 };
@@ -59,6 +59,8 @@ impl Character {
             braking: T::get_braking(),
             _collider_handle: collider_handle,
             body_handle,
+            health: T::get_max_health(),
+            max_health: T::get_max_health(),
         }
     }
 
@@ -156,6 +158,7 @@ pub trait CharacterConfigProvider {
     fn get_sprite_id() -> u32;
     fn get_acceleration() -> f32;
     fn get_braking() -> f32;
+    fn get_max_health() -> u32;
 
     fn init_physics(
         position: Vec2,
@@ -203,6 +206,10 @@ impl CharacterConfigProvider for PlayerConfigProvider {
     fn get_braking() -> f32 {
         PLAYER_BRAKING
     }
+
+    fn get_max_health() -> u32 {
+        PLAYER_MAX_HEALTH
+    }
 }
 
 struct GuardConfigProvider;
@@ -241,5 +248,9 @@ impl CharacterConfigProvider for GuardConfigProvider {
         let collider_handle =
             collider_set.insert_with_parent(collider, body_handle, rigid_body_set);
         (collider_handle, body_handle)
+    }
+
+    fn get_max_health() -> u32 {
+        GUARD_MAX_HEALTH
     }
 }
