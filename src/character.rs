@@ -38,6 +38,8 @@ pub struct Character {
     braking: f32,
     _collider_handle: ColliderHandle,
     body_handle: RigidBodyHandle,
+    health: u32,
+    max_health: u32,
 }
 
 impl Character {
