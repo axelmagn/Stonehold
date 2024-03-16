@@ -1,10 +1,7 @@
-use std::collections::VecDeque;
-
 use crate::{
     camera::Cameras,
     character::Character,
     constants::TERRAIN_MAP_ID,
-    event::{EventHandler, GameEvent},
     map::{
         mapgen::{MapGenResult, MapGenerator},
         Map,
@@ -14,14 +11,14 @@ use crate::{
 use anyhow::Result;
 use macroquad::{
     camera::set_camera,
-    color::{Color, DARKGRAY, WHITE},
+    color::{Color, DARKGRAY},
     logging::info,
     math::uvec2,
     rand::srand,
-    text::draw_text,
-    time::{get_fps, get_time},
+    time::get_time,
     window::{clear_background, next_frame},
 };
+use rapier2d::geometry::CollisionEvent;
 
 pub struct Game {
     pub map: Map,
@@ -29,7 +26,6 @@ pub struct Game {
     pub guards: Vec<Character>,
     pub physics: Physics,
     pub cameras: Cameras,
-    pub events: VecDeque<GameEvent>,
 }
 
 impl Game {
@@ -68,7 +64,6 @@ impl Game {
             guards,
             physics,
             cameras: Cameras::new(),
-            events: VecDeque::new(),
         }
     }
 
@@ -94,31 +89,42 @@ impl Game {
 
     fn collect_inputs(&mut self) {
         self.player.collect_player_inputs();
+
+        for guard in &mut self.guards {
+            guard.collect_guard_inputs(&self.player);
+        }
     }
 
     fn update(&mut self) {
         // update player
         self.player.update(&mut self.physics);
 
+        // update guards
+        for guard in &mut self.guards {
+            guard.update(&mut self.physics);
+        }
+
         // tick physics
         let (collision_recv, contact_force_recv) = self.physics.step();
 
-        // DEBUG
+        self.player.post_physics(&mut self.physics);
+
         while let Ok(collision_event) = collision_recv.try_recv() {
-            // Handle the collision event.
-            info!("Received collision event: {:?}", collision_event);
-            self.events
-                .push_back(GameEvent::CollisionEvent(collision_event));
-        }
-        while let Ok(contact_force_event) = contact_force_recv.try_recv() {
-            // Handle the contact force event.
-            info!("Received contact force event: {:?}", contact_force_event);
+            self.handle_collision(&collision_event);
         }
 
-        self.player.post_physics(&mut self.physics);
+        while let Ok(_contact_force_event) = contact_force_recv.try_recv() {
+            // Handle the contact force event.
+            // info!("Received contact force event: {:?}", contact_force_event);
+        }
 
         for guard in &mut self.guards {
             guard.post_physics(&mut self.physics);
+        }
+
+        // check guard distance to player
+        for guard in &mut self.guards {
+            guard.check_guard_distance(&self.player);
         }
 
         // update cameras (position on player, etc)
@@ -152,7 +158,7 @@ impl Game {
         // setup drawing for UI space
         set_camera(&self.cameras.ui_camera);
         clear_background(Color::new(0., 0., 0., 0.));
-        draw_text(&format!("FPS: {:4.0}", get_fps()), 10., 20., 20., WHITE);
+        self.player.draw_ui(&self.map.tile_map);
     }
 
     fn draw_screen(&self) {
@@ -161,10 +167,16 @@ impl Game {
         self.cameras.draw_world_render_to_screen();
         self.cameras.draw_ui_render_to_screen();
     }
-}
 
-impl EventHandler for Game {
-    fn handle_event(&mut self, event: &GameEvent) {
-        todo!()
+    fn handle_collision(&mut self, collision_event: &CollisionEvent) {
+        let c1_is_player = collision_event.collider1() == self.player.collider_handle;
+        let guard = self
+            .guards
+            .iter()
+            .find(|guard| guard.collider_handle == collision_event.collider2());
+
+        if c1_is_player && guard.is_some() {
+            self.player.handle_player_guard_collision(guard.unwrap());
+        }
     }
 }

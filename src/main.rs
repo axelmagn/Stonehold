@@ -3,7 +3,6 @@ use game::Game;
 mod camera;
 mod character;
 mod constants;
-mod event;
 mod game;
 mod map;
 mod physics;

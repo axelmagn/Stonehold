@@ -10,41 +10,21 @@
     "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
         "": {
-            "scaleInDock": 1.5
+            "scaleInDock": 1
         },
         "sandbox01.tmx": {
-            "scale": 1.0491,
+            "scale": 1,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 678.6769612048423,
-                "y": 369.8408159374702
+                "x": 1378,
+                "y": 612
             }
         },
         "sandbox01.tmx#tiny_dungeon": {
-            "scaleInDock": 2,
+            "scaleInDock": 3,
             "scaleInEditor": 5.5
         },
-        "sandbox02.tmx": {
-            "scale": 1,
-            "selectedLayer": 0,
-            "viewCenter": {
-                "x": 555,
-                "y": 338
-            }
-        },
-        "sandbox02.tmx#tiny_dungeon": {
-            "scaleInDock": 2
-        },
-        "sandbox_03.tmx": {
-            "scale": 1,
-            "selectedLayer": -1,
-            "viewCenter": {
-                "x": -119.5,
-                "y": -2
-            }
-        },
         "sandbox_03.tmx#tiny_dungeon": {
-            "scaleInDock": 1,
             "scaleInEditor": 1
         },
         "tiny_dungeon.tmx": {
@@ -64,7 +44,7 @@
         }
     },
     "last.exportedFilePath": "//wsl.localhost/Ubuntu/home/axelmagn/Workspace/axelmagn/Stonehold/assets/tiled/export",
-    "last.imagePath": "//wsl.localhost/Ubuntu/home/axelmagn/Workspace/axelmagn/Stonehold/assets/kenney_tiny-dungeon/Tilemap",
+    "last.imagePath": "//wsl.localhost/Ubuntu/home/axelmagn/Workspace/stonehold/assets/tiny_dungeon_modified",
     "lastUsedTilesetExportFilter": "JSON tileset files (*.tsj *.json)",
     "map.height": 96,
     "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
@@ -73,16 +53,12 @@
     "map.tileWidth": 16,
     "map.width": 128,
     "openFiles": [
-        "sandbox01.tmx",
-        "sandbox02.tmx",
-        "sandbox_03.tmx"
+        "sandbox01.tmx"
     ],
     "project": "stonehold.tiled-project",
     "property.type": "bool",
     "recentFiles": [
         "sandbox01.tmx",
-        "sandbox02.tmx",
-        "sandbox_03.tmx",
         "tiny_dungeon.tsx",
         "tiny_dungeon.tmx"
     ],

@@ -1,7 +1,8 @@
 use macroquad::{
     input::{is_key_down, KeyCode},
+    logging::info,
     math::{vec2, Rect, Vec2},
-    time::get_frame_time,
+    time::{get_frame_time, get_time},
 };
 use macroquad_tiled::Map as TiledMap;
 use nalgebra::vector;
@@ -13,11 +14,13 @@ use rapier2d::{
 
 use crate::{
     constants::{
-        GUARD_ACCELERATION, GUARD_BRAKING, GUARD_FRICTION, GUARD_FRICTION_COMBINE_RULE,
+        ALERTED_INDICATOR_COOLDOWN, DAMAGE_COOLDOWN, GRAVE_TILE_ID, GUARD_ACCELERATION,
+        GUARD_ALERT_DISTANCE, GUARD_BRAKING, GUARD_FRICTION, GUARD_FRICTION_COMBINE_RULE,
         GUARD_LINEAR_DAMPING, GUARD_MASS, GUARD_MAX_HEALTH, GUARD_RADIUS, GUARD_RESTITUTION,
-        GUARD_SPRITE_ID, PLAYER_ACCELERATION, PLAYER_BRAKING, PLAYER_FRICTION,
-        PLAYER_FRICTION_COMBINE_RULE, PLAYER_LINEAR_DAMPING, PLAYER_MASS, PLAYER_MAX_HEALTH,
-        PLAYER_RADIUS, PLAYER_RESTITUTION, PLAYER_SPRITE_ID, TILESET_MAP_ID,
+        GUARD_SPRITE_ID, HEART_TILE_ID, KNOCKBACK_COOLDOWN, PLAYER_ACCELERATION, PLAYER_BRAKING,
+        PLAYER_FRICTION, PLAYER_FRICTION_COMBINE_RULE, PLAYER_GUARD_KNOCKBACK,
+        PLAYER_LINEAR_DAMPING, PLAYER_MASS, PLAYER_MAX_HEALTH, PLAYER_RADIUS, PLAYER_RESTITUTION,
+        PLAYER_SPRITE_ID, QUESTION_MARK_TILE_ID, SIMULATED_TILE_PX, TILESET_MAP_ID,
     },
     physics::Physics,
 };
@@ -36,10 +39,15 @@ pub struct Character {
     sprite_id: u32,
     acceleration: f32,
     braking: f32,
-    _collider_handle: ColliderHandle,
+    pub collider_handle: ColliderHandle,
     body_handle: RigidBodyHandle,
     health: u32,
-    max_health: u32,
+    _max_health: u32,
+    accumulated_knockback: Vec2,
+    is_alerted: bool,
+    last_damage_time: f64,
+    last_knockback_time: f64,
+    last_alerted: f64,
 }
 
 impl Character {
@@ -57,10 +65,15 @@ impl Character {
             sprite_id: T::get_sprite_id(),
             acceleration: T::get_acceleration(),
             braking: T::get_braking(),
-            _collider_handle: collider_handle,
+            collider_handle,
             body_handle,
             health: T::get_max_health(),
-            max_health: T::get_max_health(),
+            _max_health: T::get_max_health(),
+            accumulated_knockback: Vec2::ZERO,
+            is_alerted: false,
+            last_damage_time: 0.,
+            last_knockback_time: 0.,
+            last_alerted: 0.,
         }
     }
 
@@ -97,7 +110,20 @@ impl Character {
         self.input_direction = self.input_direction.normalize_or_zero();
     }
 
+    pub fn collect_guard_inputs(&mut self, player: &Character) {
+        if !self.is_alerted || !player.is_alive() {
+            self.input_direction = Vec2::ZERO;
+            return;
+        }
+
+        self.input_direction = (player.position - self.position).normalize_or_zero();
+    }
+
     pub fn update(&mut self, physics: &mut Physics) {
+        if !self.is_alive() {
+            return;
+        }
+
         // propagate input to physics object
         let body = &mut physics.bodies[self.body_handle];
 
@@ -109,11 +135,14 @@ impl Character {
             (self.input_direction - vel_dir) * body.linvel().magnitude() * self.braking;
         let braking_acc = vector![braking_acc.x, braking_acc.y];
 
+        let knockback = vector![self.accumulated_knockback.x, self.accumulated_knockback.y];
+        self.accumulated_knockback = Vec2::ZERO;
+
         // body.reset_forces(true);
         // body.add_force(move_force, true);
         // body.add_force(braking_force, true);
         let dt = get_frame_time();
-        let new_linvel = body.linvel() + move_acc * dt + braking_acc * dt;
+        let new_linvel = body.linvel() + move_acc * dt + braking_acc * dt + knockback;
         body.set_linvel(new_linvel, true);
 
         // latch facing direction on nonzero input direction
@@ -133,7 +162,32 @@ impl Character {
     }
 
     pub fn draw(&self, tile_map: &TiledMap) {
-        tile_map.spr(TILESET_MAP_ID, self.sprite_id, self.get_draw_rect());
+        let mut draw_rect = self.get_draw_rect();
+        let sprite_id = if self.is_alive() {
+            self.sprite_id
+        } else {
+            GRAVE_TILE_ID
+        };
+        tile_map.spr(TILESET_MAP_ID, sprite_id, draw_rect);
+        if self.is_alerted && get_time() < self.last_alerted + ALERTED_INDICATOR_COOLDOWN {
+            draw_rect.y -= 1.;
+            tile_map.spr(TILESET_MAP_ID, QUESTION_MARK_TILE_ID, draw_rect);
+        }
+    }
+
+    pub fn draw_ui(&self, tile_map: &TiledMap) {
+        let origin = vec2(10., 10.);
+        for i in 0..self.health {
+            let padding = -1.;
+            let offset_x = (SIMULATED_TILE_PX * 2. + padding) * i as f32;
+            let draw_rect = Rect::new(
+                origin.x + offset_x,
+                origin.y,
+                SIMULATED_TILE_PX * 2.,
+                SIMULATED_TILE_PX * 2.,
+            );
+            tile_map.spr(TILESET_MAP_ID, HEART_TILE_ID, draw_rect);
+        }
     }
 
     pub fn get_draw_rect(&self) -> Rect {
@@ -151,6 +205,60 @@ impl Character {
                 h: 1.,
             },
         }
+    }
+
+    pub fn is_alive(&self) -> bool {
+        self.health > 0
+    }
+
+    pub fn can_damage(&self) -> bool {
+        get_time() > self.last_damage_time + DAMAGE_COOLDOWN
+    }
+
+    pub fn can_knockback(&self) -> bool {
+        get_time() > self.last_knockback_time + KNOCKBACK_COOLDOWN
+    }
+
+    pub fn handle_player_guard_collision(&mut self, guard: &Character) {
+        info!("PLAYER HIT");
+        self.deal_damage(1);
+
+        let guard_dir = (guard.position - self.position).normalize_or_zero();
+        let knockback = -1. * guard_dir * PLAYER_GUARD_KNOCKBACK;
+        self.apply_knockback(knockback);
+    }
+
+    pub fn deal_damage(&mut self, amount: u32) {
+        if !self.can_damage() {
+            return;
+        }
+        self.health -= amount.min(self.health);
+        self.last_damage_time = get_time();
+    }
+
+    pub fn apply_knockback(&mut self, delta_velocity: Vec2) {
+        if !self.can_knockback() {
+            return;
+        }
+
+        self.accumulated_knockback += delta_velocity;
+        self.last_knockback_time = get_time();
+    }
+
+    pub fn check_guard_distance(&mut self, player: &Character) {
+        if self.position.distance_squared(player.position)
+            < GUARD_ALERT_DISTANCE * GUARD_ALERT_DISTANCE
+        {
+            self.alert_guard();
+        }
+    }
+
+    pub fn alert_guard(&mut self) {
+        if self.is_alerted {
+            return;
+        }
+        self.is_alerted = true;
+        self.last_alerted = get_time();
     }
 }
 
@@ -183,6 +291,7 @@ impl CharacterConfigProvider for PlayerConfigProvider {
             .translation(vector![position.x + 0.5, position.y + 0.5])
             .lock_rotations()
             .linear_damping(PLAYER_LINEAR_DAMPING) // TODO: make const
+            .ccd_enabled(true)
             .build();
 
         let collider = ColliderBuilder::ball(PLAYER_RADIUS)
@@ -235,6 +344,7 @@ impl CharacterConfigProvider for GuardConfigProvider {
             .translation(vector![position.x + 0.5, position.y + 0.5])
             .lock_rotations()
             .linear_damping(GUARD_LINEAR_DAMPING) // TODO: make const
+            .ccd_enabled(true)
             .build();
         let collider = ColliderBuilder::ball(GUARD_RADIUS)
             .mass(GUARD_MASS)

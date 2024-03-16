@@ -71,7 +71,7 @@
         {
          "columns":12,
          "firstgid":1,
-         "image":"..\/..\/kenney_tiny-dungeon\/Tilemap\/tilemap_packed.png",
+         "image":"..\/..\/tiny_dungeon_modified\/tilemap_packed.png",
          "imageheight":176,
          "imagewidth":192,
          "margin":0,

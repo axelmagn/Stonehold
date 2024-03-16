@@ -120,3 +120,14 @@ pub const GUARD_RADIUS: f32 = 0.5;
 pub const GUARD_RESTITUTION: f32 = 0.5;
 pub const GUARD_SPRITE_ID: u32 = 96;
 pub const GUARD_MAX_HEALTH: u32 = 3;
+
+pub const QUESTION_MARK_TILE_ID: u32 = 127;
+pub const HEART_TILE_ID: u32 = 128;
+pub const GRAVE_TILE_ID: u32 = 64;
+
+pub const DAMAGE_COOLDOWN: f64 = 1.;
+pub const KNOCKBACK_COOLDOWN: f64 = 0.2;
+pub const ALERTED_INDICATOR_COOLDOWN: f64 = 3.;
+
+pub const PLAYER_GUARD_KNOCKBACK: f32 = 96.;
+pub const GUARD_ALERT_DISTANCE: f32 = 10.;
