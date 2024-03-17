@@ -3,7 +3,7 @@ use rapier2d::{
     crossbeam::{self, channel::Receiver},
     dynamics::{
         CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet,
-        RigidBodySet,
+        RigidBody, RigidBodyHandle, RigidBodySet,
     },
     geometry::{BroadPhase, ColliderSet, CollisionEvent, ContactForceEvent, NarrowPhase},
     math::{Real, Vector},
@@ -55,5 +55,20 @@ impl Physics {
         );
 
         (collision_recv, contact_force_recv)
+    }
+
+    pub fn remove_body(
+        &mut self,
+        body_handle: &RigidBodyHandle,
+        remove_attached_colliders: bool,
+    ) -> Option<RigidBody> {
+        self.bodies.remove(
+            *body_handle,
+            &mut self.islands,
+            &mut self.colliders,
+            &mut self.impulse_joints,
+            &mut self.multibody_joints,
+            remove_attached_colliders,
+        )
     }
 }

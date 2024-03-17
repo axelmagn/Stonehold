@@ -110,7 +110,7 @@ pub const PLAYER_RESTITUTION: f32 = 0.5;
 pub const PLAYER_SPRITE_ID: u32 = 85;
 pub const PLAYER_MAX_HEALTH: u32 = 3;
 
-pub const GUARD_ACCELERATION: f32 = 32.;
+pub const GUARD_ACCELERATION: f32 = 24.;
 pub const GUARD_BRAKING: f32 = 10.;
 pub const GUARD_FRICTION: f32 = 0.;
 pub const GUARD_FRICTION_COMBINE_RULE: CoefficientCombineRule = CoefficientCombineRule::Min;
@@ -128,6 +128,10 @@ pub const GRAVE_TILE_ID: u32 = 64;
 pub const DAMAGE_COOLDOWN: f64 = 1.;
 pub const KNOCKBACK_COOLDOWN: f64 = 0.2;
 pub const ALERTED_INDICATOR_COOLDOWN: f64 = 3.;
+pub const ATTACK_COOLDOWN: f64 = 0.4;
+pub const ATTACK_DURATION: f64 = 0.1;
 
 pub const PLAYER_GUARD_KNOCKBACK: f32 = 96.;
+pub const PLAYER_ATTACK_KNOCKBACK: f32 = 256.;
 pub const GUARD_ALERT_DISTANCE: f32 = 10.;
+pub const PLAYER_ATTACK_RADIUS: f32 = 1.6;

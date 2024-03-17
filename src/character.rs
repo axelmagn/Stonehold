@@ -1,23 +1,31 @@
 use macroquad::{
-    input::{is_key_down, KeyCode},
+    color::WHITE,
+    input::{
+        is_key_down, is_mouse_button_down, mouse_position, mouse_position_local, KeyCode,
+        MouseButton,
+    },
     logging::info,
     math::{vec2, Rect, Vec2},
+    shapes::draw_circle,
+    text::draw_text,
     time::{get_frame_time, get_time},
 };
 use macroquad_tiled::Map as TiledMap;
-use nalgebra::vector;
+use nalgebra::{vector, Vector2};
 use rapier2d::{
     dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet},
     geometry::{ColliderBuilder, ColliderHandle, ColliderSet},
+    math::Isometry,
     pipeline::ActiveEvents,
 };
 
 use crate::{
     constants::{
-        ALERTED_INDICATOR_COOLDOWN, DAMAGE_COOLDOWN, GRAVE_TILE_ID, GUARD_ACCELERATION,
-        GUARD_ALERT_DISTANCE, GUARD_BRAKING, GUARD_FRICTION, GUARD_FRICTION_COMBINE_RULE,
-        GUARD_LINEAR_DAMPING, GUARD_MASS, GUARD_MAX_HEALTH, GUARD_RADIUS, GUARD_RESTITUTION,
-        GUARD_SPRITE_ID, HEART_TILE_ID, KNOCKBACK_COOLDOWN, PLAYER_ACCELERATION, PLAYER_BRAKING,
+        ALERTED_INDICATOR_COOLDOWN, ATTACK_COOLDOWN, ATTACK_DURATION, DAMAGE_COOLDOWN,
+        GRAVE_TILE_ID, GUARD_ACCELERATION, GUARD_ALERT_DISTANCE, GUARD_BRAKING, GUARD_FRICTION,
+        GUARD_FRICTION_COMBINE_RULE, GUARD_LINEAR_DAMPING, GUARD_MASS, GUARD_MAX_HEALTH,
+        GUARD_RADIUS, GUARD_RESTITUTION, GUARD_SPRITE_ID, HEART_TILE_ID, KNOCKBACK_COOLDOWN,
+        PLAYER_ACCELERATION, PLAYER_ATTACK_KNOCKBACK, PLAYER_ATTACK_RADIUS, PLAYER_BRAKING,
         PLAYER_FRICTION, PLAYER_FRICTION_COMBINE_RULE, PLAYER_GUARD_KNOCKBACK,
         PLAYER_LINEAR_DAMPING, PLAYER_MASS, PLAYER_MAX_HEALTH, PLAYER_RADIUS, PLAYER_RESTITUTION,
         PLAYER_SPRITE_ID, QUESTION_MARK_TILE_ID, SIMULATED_TILE_PX, TILESET_MAP_ID,
@@ -34,17 +42,22 @@ pub enum FacingDirection {
 #[derive(Debug)]
 pub struct Character {
     pub position: Vec2,
+    attack_position: Vec2,
     input_direction: Vec2,
     facing_direction: FacingDirection,
     sprite_id: u32,
     acceleration: f32,
     braking: f32,
-    pub collider_handle: ColliderHandle,
-    body_handle: RigidBodyHandle,
+    pub collider_handle: Option<ColliderHandle>,
+    pub attack_collider_handle: Option<ColliderHandle>,
+    body_handle: Option<RigidBodyHandle>,
     health: u32,
     _max_health: u32,
     accumulated_knockback: Vec2,
     is_alerted: bool,
+    is_attacking: bool,
+    attack_direction: Vec2,
+    last_attack_start: f64,
     last_damage_time: f64,
     last_knockback_time: f64,
     last_alerted: f64,
@@ -56,21 +69,26 @@ impl Character {
         collider_set: &mut ColliderSet,
         rigid_body_set: &mut RigidBodySet,
     ) -> Self {
-        let (collider_handle, body_handle) =
+        let (collider_handle, body_handle, attack_collider_handle) =
             T::init_physics(position, collider_set, rigid_body_set);
         Self {
             position,
+            attack_position: position,
             input_direction: Vec2::ZERO,
             facing_direction: FacingDirection::Left,
             sprite_id: T::get_sprite_id(),
             acceleration: T::get_acceleration(),
             braking: T::get_braking(),
-            collider_handle,
-            body_handle,
+            collider_handle: Some(collider_handle),
+            attack_collider_handle,
+            body_handle: Some(body_handle),
             health: T::get_max_health(),
             _max_health: T::get_max_health(),
             accumulated_knockback: Vec2::ZERO,
             is_alerted: false,
+            is_attacking: false,
+            attack_direction: Vec2::ZERO,
+            last_attack_start: 0.,
             last_damage_time: 0.,
             last_knockback_time: 0.,
             last_alerted: 0.,
@@ -107,6 +125,15 @@ impl Character {
         if is_key_down(KeyCode::D) {
             self.input_direction += vec2(1., 0.);
         }
+
+        if is_mouse_button_down(MouseButton::Left)
+            && get_time() > self.last_attack_start + ATTACK_COOLDOWN
+        {
+            self.attack_direction = mouse_position_local().normalize_or_zero();
+            self.is_attacking = true;
+            self.last_attack_start = get_time();
+        }
+
         self.input_direction = self.input_direction.normalize_or_zero();
     }
 
@@ -120,12 +147,34 @@ impl Character {
     }
 
     pub fn update(&mut self, physics: &mut Physics) {
-        if !self.is_alive() {
+        if !self.is_alive() && self.body_handle.is_some() {
+            self.destroy_physics(physics);
+        }
+
+        if !self.is_alive() || self.body_handle.is_none() {
             return;
         }
 
-        // propagate input to physics object
-        let body = &mut physics.bodies[self.body_handle];
+        // timeout attack
+        if self.is_attacking && get_time() > self.last_attack_start + ATTACK_DURATION {
+            self.is_attacking = false;
+        }
+
+        // set the attack collider position. attack collider is always centered around the player radius in the attack direction.
+        if self.is_attacking {
+            if let Some(attack_collider_handle) = self.attack_collider_handle {
+                let attack_collider = &mut physics.colliders[attack_collider_handle];
+                let attack_direction = vector![self.attack_direction.x, self.attack_direction.y]
+                    * (PLAYER_ATTACK_RADIUS - PLAYER_RADIUS);
+                attack_collider.set_position_wrt_parent(Isometry::translation(
+                    attack_direction.x,
+                    attack_direction.y,
+                ));
+            }
+        }
+
+        // move the player
+        let body = &mut physics.bodies[self.body_handle.unwrap()];
 
         let move_acc = self.input_direction * self.acceleration;
         let move_acc = vector![move_acc.x, move_acc.y];
@@ -138,9 +187,6 @@ impl Character {
         let knockback = vector![self.accumulated_knockback.x, self.accumulated_knockback.y];
         self.accumulated_knockback = Vec2::ZERO;
 
-        // body.reset_forces(true);
-        // body.add_force(move_force, true);
-        // body.add_force(braking_force, true);
         let dt = get_frame_time();
         let new_linvel = body.linvel() + move_acc * dt + braking_acc * dt + knockback;
         body.set_linvel(new_linvel, true);
@@ -154,14 +200,35 @@ impl Character {
     }
 
     pub fn post_physics(&mut self, physics: &mut Physics) {
-        let body = &physics.bodies[self.body_handle];
+        if self.body_handle.is_none() {
+            return;
+        }
+
+        let body = &physics.bodies[self.body_handle.unwrap()];
         // TODO(axelmagn): snap to simulated pixel
         // mq -> nalgebra conversion
         self.position.x = body.translation().x - 0.5;
         self.position.y = body.translation().y - 0.5;
+
+        if let Some(attack_collider_handle) = self.attack_collider_handle {
+            let attack_collider = &physics.colliders[attack_collider_handle];
+            self.attack_position.x = attack_collider.translation().x;
+            self.attack_position.y = attack_collider.translation().y;
+        }
     }
 
     pub fn draw(&self, tile_map: &TiledMap) {
+        // draw attack
+        if self.is_attacking && self.is_alive() {
+            draw_circle(
+                self.attack_position.x,
+                self.attack_position.y,
+                PLAYER_ATTACK_RADIUS,
+                WHITE,
+            )
+        }
+
+        // draw player
         let mut draw_rect = self.get_draw_rect();
         let sprite_id = if self.is_alive() {
             self.sprite_id
@@ -223,8 +290,8 @@ impl Character {
         info!("PLAYER HIT");
         self.deal_damage(1);
 
-        let guard_dir = (guard.position - self.position).normalize_or_zero();
-        let knockback = -1. * guard_dir * PLAYER_GUARD_KNOCKBACK;
+        let knockback_dir = (self.position - guard.position).normalize_or_zero();
+        let knockback = knockback_dir * PLAYER_GUARD_KNOCKBACK;
         self.apply_knockback(knockback);
     }
 
@@ -260,6 +327,23 @@ impl Character {
         self.is_alerted = true;
         self.last_alerted = get_time();
     }
+
+    pub fn destroy_physics(&mut self, physics: &mut Physics) {
+        if self.body_handle.is_none() {
+            return;
+        }
+        physics.remove_body(&self.body_handle.unwrap(), true);
+        self.body_handle = None;
+        self.collider_handle = None;
+    }
+
+    pub fn handle_attack_collision(&mut self, guard: &mut Character) {
+        if !self.is_attacking {
+            return;
+        }
+        let knockback_dir = self.attack_direction;
+        guard.apply_knockback(knockback_dir * PLAYER_ATTACK_KNOCKBACK);
+    }
 }
 
 pub trait CharacterConfigProvider {
@@ -267,12 +351,13 @@ pub trait CharacterConfigProvider {
     fn get_acceleration() -> f32;
     fn get_braking() -> f32;
     fn get_max_health() -> u32;
+    fn destroy_on_death() -> bool;
 
     fn init_physics(
         position: Vec2,
         collider_set: &mut ColliderSet,
         rigid_body_set: &mut RigidBodySet,
-    ) -> (ColliderHandle, RigidBodyHandle);
+    ) -> (ColliderHandle, RigidBodyHandle, Option<ColliderHandle>);
 }
 
 struct PlayerConfigProvider;
@@ -285,7 +370,7 @@ impl CharacterConfigProvider for PlayerConfigProvider {
         position: Vec2,
         collider_set: &mut ColliderSet,
         rigid_body_set: &mut RigidBodySet,
-    ) -> (ColliderHandle, RigidBodyHandle) {
+    ) -> (ColliderHandle, RigidBodyHandle, Option<ColliderHandle>) {
         // character body
         let body = RigidBodyBuilder::dynamic()
             .translation(vector![position.x + 0.5, position.y + 0.5])
@@ -299,13 +384,20 @@ impl CharacterConfigProvider for PlayerConfigProvider {
             .friction(PLAYER_FRICTION)
             .friction_combine_rule(PLAYER_FRICTION_COMBINE_RULE)
             .restitution(PLAYER_RESTITUTION)
-            .active_events(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
+            .active_events(ActiveEvents::COLLISION_EVENTS)
+            .build();
+
+        let attack_collider = ColliderBuilder::ball(PLAYER_ATTACK_RADIUS)
+            .active_events(ActiveEvents::COLLISION_EVENTS)
+            .sensor(true)
             .build();
 
         let body_handle = rigid_body_set.insert(body);
         let collider_handle =
             collider_set.insert_with_parent(collider, body_handle, rigid_body_set);
-        (collider_handle, body_handle)
+        let attack_collider_handle =
+            collider_set.insert_with_parent(attack_collider, body_handle, rigid_body_set);
+        (collider_handle, body_handle, Some(attack_collider_handle))
     }
 
     fn get_acceleration() -> f32 {
@@ -318,6 +410,10 @@ impl CharacterConfigProvider for PlayerConfigProvider {
 
     fn get_max_health() -> u32 {
         PLAYER_MAX_HEALTH
+    }
+
+    fn destroy_on_death() -> bool {
+        false
     }
 }
 
@@ -339,7 +435,7 @@ impl CharacterConfigProvider for GuardConfigProvider {
         position: Vec2,
         collider_set: &mut ColliderSet,
         rigid_body_set: &mut RigidBodySet,
-    ) -> (ColliderHandle, RigidBodyHandle) {
+    ) -> (ColliderHandle, RigidBodyHandle, Option<ColliderHandle>) {
         let body = RigidBodyBuilder::dynamic()
             .translation(vector![position.x + 0.5, position.y + 0.5])
             .lock_rotations()
@@ -351,16 +447,20 @@ impl CharacterConfigProvider for GuardConfigProvider {
             .friction(GUARD_FRICTION)
             .friction_combine_rule(GUARD_FRICTION_COMBINE_RULE)
             .restitution(GUARD_RESTITUTION)
-            .active_events(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
+            .active_events(ActiveEvents::COLLISION_EVENTS)
             .build();
 
         let body_handle = rigid_body_set.insert(body);
         let collider_handle =
             collider_set.insert_with_parent(collider, body_handle, rigid_body_set);
-        (collider_handle, body_handle)
+        (collider_handle, body_handle, None)
     }
 
     fn get_max_health() -> u32 {
         GUARD_MAX_HEALTH
+    }
+
+    fn destroy_on_death() -> bool {
+        true
     }
 }

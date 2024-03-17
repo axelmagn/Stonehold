@@ -169,14 +169,20 @@ impl Game {
     }
 
     fn handle_collision(&mut self, collision_event: &CollisionEvent) {
-        let c1_is_player = collision_event.collider1() == self.player.collider_handle;
+        let c1_is_player = Some(collision_event.collider1()) == self.player.collider_handle;
+        let c1_is_attack = Some(collision_event.collider1()) == self.player.attack_collider_handle;
         let guard = self
             .guards
-            .iter()
-            .find(|guard| guard.collider_handle == collision_event.collider2());
+            .iter_mut()
+            .find(|guard| guard.collider_handle == Some(collision_event.collider2()));
 
         if c1_is_player && guard.is_some() {
-            self.player.handle_player_guard_collision(guard.unwrap());
+            self.player
+                .handle_player_guard_collision(guard.as_ref().unwrap());
+        }
+
+        if c1_is_attack && guard.is_some() {
+            self.player.handle_attack_collision(guard.unwrap());
         }
     }
 }
