@@ -239,7 +239,7 @@ impl Character {
     }
 
     pub fn draw_ui(&self, tile_map: &TiledMap) {
-        let origin = vec2(10., 10.);
+        let origin = vec2(16., 16.);
         for i in 0..self.health {
             let padding = -1.;
             let offset_x = (SIMULATED_TILE_PX * 2. + padding) * i as f32;

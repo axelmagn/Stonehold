@@ -108,7 +108,7 @@ pub const PLAYER_MASS: f32 = 100.;
 pub const PLAYER_RADIUS: f32 = 0.5;
 pub const PLAYER_RESTITUTION: f32 = 0.5;
 pub const PLAYER_SPRITE_ID: u32 = 85;
-pub const PLAYER_MAX_HEALTH: u32 = 3;
+pub const PLAYER_MAX_HEALTH: u32 = 10;
 
 pub const GUARD_ACCELERATION: f32 = 24.;
 pub const GUARD_BRAKING: f32 = 10.;

@@ -1,8 +1,8 @@
 use crate::{
     camera::Cameras,
     character::Character,
-    constants::TERRAIN_MAP_ID,
-    door::GuardDoor,
+    constants::{GUARD_SPRITE_ID, SIMULATED_RESOLUTION, TERRAIN_MAP_ID, TILESET_MAP_ID},
+    door::{ExitDoor, GuardDoor},
     map::{
         mapgen::{MapGenResult, MapGenerator},
         Map,
@@ -12,10 +12,11 @@ use crate::{
 use anyhow::Result;
 use macroquad::{
     camera::set_camera,
-    color::{Color, DARKGRAY},
+    color::{Color, DARKGRAY, WHITE},
     logging::info,
-    math::uvec2,
+    math::{uvec2, Rect},
     rand::srand,
+    text::draw_text,
     time::get_time,
     window::{clear_background, next_frame},
 };
@@ -26,8 +27,11 @@ pub struct Game {
     pub player: Character,
     pub guards: Vec<Character>,
     pub guard_doors: Vec<GuardDoor>,
+    pub exit_door: ExitDoor,
     pub physics: Physics,
     pub cameras: Cameras,
+    pub score: u32,
+    pub score_target: u32,
 }
 
 impl Game {
@@ -46,7 +50,7 @@ impl Game {
             rooms,
             layer,
             guard_doors,
-            ..
+            exit_door,
         } = mapgen.generate_layer();
         let mut map = map;
         map.tile_map.layers.insert(TERRAIN_MAP_ID.into(), layer);
@@ -65,18 +69,27 @@ impl Game {
             })
             .collect();
 
-        let guard_doors = guard_doors
+        let guard_doors: Vec<GuardDoor> = guard_doors
             .iter()
             .map(|position| GuardDoor::create(*position, &mut physics.colliders))
             .collect();
+
+        // DEBUG
+        // let score_target = guard_doors.len() as u32 / 2;
+        let score_target = 1;
+
+        let exit_door = ExitDoor::create(exit_door, &mut physics.colliders);
 
         Self {
             map,
             player,
             guards,
             guard_doors,
+            exit_door,
             physics,
             cameras: Cameras::new(),
+            score: 0,
+            score_target,
         }
     }
 
@@ -168,6 +181,24 @@ impl Game {
             self.guards[*i].destroy_physics(&mut self.physics);
             self.guards.remove(*i);
         }
+        self.score += removed_guards.len() as u32;
+
+        // open exit if needed
+        if !self.exit_door.is_open && self.score >= self.score_target {
+            self.exit_door
+                .open_door(self.map.tile_map.layers.get_mut(TERRAIN_MAP_ID).unwrap());
+        }
+
+        // handle player exit
+        if self.exit_door.is_open
+            && self.player.collider_handle.is_some()
+            && self.physics.narrow_phase.intersection_pair(
+                self.player.collider_handle.unwrap(),
+                self.exit_door.collider_handle,
+            ) == Some(true)
+        {
+            panic!("YOU WIN!!!!");
+        }
 
         while let Ok(_contact_force_event) = contact_force_recv.try_recv() {
             // Handle the contact force event.
@@ -215,6 +246,19 @@ impl Game {
         set_camera(&self.cameras.ui_camera);
         clear_background(Color::new(0., 0., 0., 0.));
         self.player.draw_ui(&self.map.tile_map);
+
+        // draw score
+        let score_rect = Rect::new(SIMULATED_RESOLUTION.x as f32 - 128., 16., 32., 32.);
+        self.map
+            .tile_map
+            .spr(TILESET_MAP_ID, GUARD_SPRITE_ID, score_rect);
+        draw_text(
+            &format!("{}/{}", self.score, self.score_target),
+            score_rect.x + 48.,
+            score_rect.y + 32.,
+            48.,
+            WHITE,
+        );
     }
 
     fn draw_screen(&self) {
