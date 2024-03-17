@@ -554,26 +554,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "parry2d"
-version = "0.13.6"
-source = "git+https://github.com/axelmagn/parry?rev=71b0fa8#71b0fa8531ab36d83d8b143dc3694a973dece9c1"
-dependencies = [
- "approx",
- "arrayvec",
- "bitflags",
- "downcast-rs",
- "either",
- "nalgebra",
- "num-derive",
- "num-traits",
- "rustc-hash",
- "simba",
- "slab",
- "smallvec",
- "spade",
-]
-
-[[package]]
 name = "paste"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -643,7 +623,7 @@ dependencies = [
  "nalgebra",
  "num-derive",
  "num-traits",
- "parry2d 0.13.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parry2d",
  "rustc-hash",
  "simba",
 ]
@@ -739,7 +719,6 @@ dependencies = [
  "macroquad",
  "macroquad-tiled",
  "nalgebra",
- "parry2d 0.13.6 (git+https://github.com/axelmagn/parry?rev=71b0fa8)",
  "rapier2d",
 ]
 

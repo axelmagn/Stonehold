@@ -55,7 +55,7 @@ pub struct Character {
     _max_health: u32,
     accumulated_knockback: Vec2,
     is_alerted: bool,
-    is_attacking: bool,
+    pub is_attacking: bool,
     attack_direction: Vec2,
     last_attack_start: f64,
     last_damage_time: f64,
@@ -341,6 +341,7 @@ impl Character {
         if !self.is_attacking {
             return;
         }
+        info!("ATTACK COLLISION");
         let knockback_dir = self.attack_direction;
         guard.apply_knockback(knockback_dir * PLAYER_ATTACK_KNOCKBACK);
     }

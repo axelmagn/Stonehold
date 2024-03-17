@@ -113,6 +113,20 @@ impl Game {
             self.handle_collision(&collision_event);
         }
 
+        // handle player attack
+        if self.player.is_attacking && self.player.attack_collider_handle.is_some() {
+            for guard in &mut self.guards {
+                if guard.collider_handle.is_some()
+                    && self.physics.narrow_phase.intersection_pair(
+                        self.player.attack_collider_handle.unwrap(),
+                        guard.collider_handle.unwrap(),
+                    ) == Some(true)
+                {
+                    self.player.handle_attack_collision(guard);
+                }
+            }
+        }
+
         while let Ok(_contact_force_event) = contact_force_recv.try_recv() {
             // Handle the contact force event.
             // info!("Received contact force event: {:?}", contact_force_event);
@@ -170,7 +184,6 @@ impl Game {
 
     fn handle_collision(&mut self, collision_event: &CollisionEvent) {
         let c1_is_player = Some(collision_event.collider1()) == self.player.collider_handle;
-        let c1_is_attack = Some(collision_event.collider1()) == self.player.attack_collider_handle;
         let guard = self
             .guards
             .iter_mut()
@@ -179,10 +192,6 @@ impl Game {
         if c1_is_player && guard.is_some() {
             self.player
                 .handle_player_guard_collision(guard.as_ref().unwrap());
-        }
-
-        if c1_is_attack && guard.is_some() {
-            self.player.handle_attack_collision(guard.unwrap());
         }
     }
 }
