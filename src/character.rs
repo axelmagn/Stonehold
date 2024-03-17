@@ -1,17 +1,13 @@
 use macroquad::{
     color::WHITE,
-    input::{
-        is_key_down, is_mouse_button_down, mouse_position, mouse_position_local, KeyCode,
-        MouseButton,
-    },
+    input::{is_key_down, is_mouse_button_down, mouse_position_local, KeyCode, MouseButton},
     logging::info,
     math::{vec2, Rect, Vec2},
     shapes::draw_circle,
-    text::draw_text,
     time::{get_frame_time, get_time},
 };
 use macroquad_tiled::Map as TiledMap;
-use nalgebra::{vector, Vector2};
+use nalgebra::vector;
 use rapier2d::{
     dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet},
     geometry::{ColliderBuilder, ColliderHandle, ColliderSet},

@@ -3,8 +3,9 @@ use game::Game;
 mod camera;
 mod character;
 mod constants;
+mod door;
 mod game;
-mod map;
+pub mod map;
 mod physics;
 
 #[macroquad::main("Stonehold")]

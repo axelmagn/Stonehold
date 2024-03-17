@@ -1115,7 +1115,7 @@ impl MapGenerator {
     }
 }
 
-fn xytoi(x: u32, y: u32, layer: &Layer) -> usize {
+pub fn xytoi(x: u32, y: u32, layer: &Layer) -> usize {
     (y * layer.width + x) as usize
 }
 

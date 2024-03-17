@@ -2,6 +2,7 @@ use crate::{
     camera::Cameras,
     character::Character,
     constants::TERRAIN_MAP_ID,
+    door::GuardDoor,
     map::{
         mapgen::{MapGenResult, MapGenerator},
         Map,
@@ -24,6 +25,7 @@ pub struct Game {
     pub map: Map,
     pub player: Character,
     pub guards: Vec<Character>,
+    pub guard_doors: Vec<GuardDoor>,
     pub physics: Physics,
     pub cameras: Cameras,
 }
@@ -40,7 +42,12 @@ impl Game {
             map.tile_map.raw_tiled_map.height,
         ));
 
-        let MapGenResult { rooms, layer, .. } = mapgen.generate_layer();
+        let MapGenResult {
+            rooms,
+            layer,
+            guard_doors,
+            ..
+        } = mapgen.generate_layer();
         let mut map = map;
         map.tile_map.layers.insert(TERRAIN_MAP_ID.into(), layer);
         info!("rooms: {:?}", rooms);
@@ -58,10 +65,16 @@ impl Game {
             })
             .collect();
 
+        let guard_doors = guard_doors
+            .iter()
+            .map(|position| GuardDoor::create(*position, &mut physics.colliders))
+            .collect();
+
         Self {
             map,
             player,
             guards,
+            guard_doors,
             physics,
             cameras: Cameras::new(),
         }
@@ -125,6 +138,35 @@ impl Game {
                     self.player.handle_attack_collision(guard);
                 }
             }
+        }
+
+        // handle guard door collisions
+        let mut removed_guards = Vec::new();
+        for (_i, door) in self.guard_doors.iter_mut().enumerate() {
+            if !door.is_open {
+                continue;
+            }
+            for (j, guard) in &mut self.guards.iter_mut().enumerate() {
+                if !guard.collider_handle.is_some() {
+                    continue;
+                }
+
+                if self
+                    .physics
+                    .narrow_phase
+                    .intersection_pair(door.collider_handle, guard.collider_handle.unwrap())
+                    == Some(true)
+                {
+                    door.close_door(self.map.tile_map.layers.get_mut(TERRAIN_MAP_ID).unwrap());
+                    removed_guards.push(j);
+                }
+            }
+        }
+        // clean up removed guards
+        removed_guards.sort();
+        for i in removed_guards.iter().rev() {
+            self.guards[*i].destroy_physics(&mut self.physics);
+            self.guards.remove(*i);
         }
 
         while let Ok(_contact_force_event) = contact_force_recv.try_recv() {

@@ -1,6 +1,8 @@
 # Stonehold
 
-An action game about escaping a dungeon
+An action game about escaping a dungeon.
+
+This was made for a gamejam.  Code quality is generally poor.
 
 ## Dev Environment Setup
 
