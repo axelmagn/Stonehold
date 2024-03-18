@@ -22,6 +22,13 @@ use macroquad::{
 };
 use rapier2d::geometry::CollisionEvent;
 
+pub enum GameState {
+    MainMenu,
+    Instructions,
+    InGame(Game),
+    GameOver,
+}
+
 pub struct Game {
     pub map: Map,
     pub player: Character,
