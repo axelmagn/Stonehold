@@ -7,6 +7,7 @@ use crate::{
         mapgen::{MapGenResult, MapGenerator},
         Map,
     },
+    menus::MainMenu,
     physics::Physics,
 };
 use anyhow::Result;
@@ -22,14 +23,17 @@ use macroquad::{
 };
 use rapier2d::geometry::CollisionEvent;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GameState {
     MainMenu,
     Instructions,
-    InGame(Game),
+    InGame,
     GameOver,
+    Exit,
 }
 
 pub struct Game {
+    pub state: GameState,
     pub map: Map,
     pub player: Character,
     pub guards: Vec<Character>,
@@ -39,6 +43,7 @@ pub struct Game {
     pub cameras: Cameras,
     pub score: u32,
     pub score_target: u32,
+    pub main_menu: MainMenu,
 }
 
 impl Game {
@@ -88,6 +93,7 @@ impl Game {
         let exit_door = ExitDoor::create(exit_door, &mut physics.colliders);
 
         Self {
+            state: GameState::MainMenu,
             map,
             player,
             guards,
@@ -97,6 +103,7 @@ impl Game {
             cameras: Cameras::new(),
             score: 0,
             score_target,
+            main_menu: MainMenu::new(),
         }
     }
 
@@ -110,9 +117,24 @@ impl Game {
         self.map.init_colliders(&mut self.physics.colliders);
     }
 
-    pub async fn run(&mut self) -> Result<()> {
+    pub async fn run_state(&mut self) -> Result<()> {
+        loop {
+            self.state = match &mut self.state {
+                GameState::MainMenu => self.main_menu.run().await?,
+                GameState::Instructions => todo!(),
+                GameState::InGame => self.run().await?,
+                GameState::GameOver => todo!(),
+                GameState::Exit => return Ok(()),
+            }
+        }
+    }
+
+    pub async fn run(&mut self) -> Result<GameState> {
         self.setup();
         loop {
+            if self.state != GameState::InGame {
+                return Ok(self.state);
+            }
             self.collect_inputs();
             self.update();
             self.draw();
@@ -204,7 +226,9 @@ impl Game {
                 self.exit_door.collider_handle,
             ) == Some(true)
         {
-            panic!("YOU WIN!!!!");
+            // TODO(axelmagn): transition to victory screen
+            info!("YOU WIN!!!");
+            self.state = GameState::Exit;
         }
 
         while let Ok(_contact_force_event) = contact_force_recv.try_recv() {
