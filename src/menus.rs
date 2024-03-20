@@ -1,5 +1,6 @@
 use anyhow::Result;
 use macroquad::{
+    audio::{play_sound, play_sound_once},
     color::{DARKGRAY, WHITE},
     math::{vec2, RectOffset},
     texture::Image,
@@ -7,18 +8,20 @@ use macroquad::{
     window::{clear_background, next_frame, screen_height, screen_width},
 };
 
-use crate::game::GameState;
+use crate::{audio::Sounds, game::GameState};
 
 pub struct MainMenu {
     skin: Skin,
     next_state: Option<GameState>,
+    sounds: Sounds,
 }
 
 impl MainMenu {
-    pub fn new() -> Self {
+    pub fn new(sounds: &Sounds) -> Self {
         Self {
             skin: base_skin(),
             next_state: None,
+            sounds: sounds.clone(),
         }
     }
 
@@ -48,6 +51,7 @@ impl MainMenu {
                 // TODO(axelmagn): play sound
                 // TODO(axelmagn): transition to instructions
                 self.next_state = Some(GameState::Instructions);
+                play_sound_once(&self.sounds.click);
             };
         });
     }

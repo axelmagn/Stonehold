@@ -1,4 +1,5 @@
 use crate::{
+    audio::Sounds,
     camera::Cameras,
     character::Character,
     constants::{
@@ -14,6 +15,7 @@ use crate::{
 };
 use anyhow::Result;
 use macroquad::{
+    audio::Sound,
     camera::set_camera,
     color::{Color, DARKGRAY, WHITE},
     logging::info,
@@ -37,6 +39,7 @@ pub enum GameState {
 pub struct Game {
     pub state: GameState,
     pub map: Map,
+    pub sounds: Sounds,
     pub player: Character,
     pub guards: Vec<Character>,
     pub guard_doors: Vec<GuardDoor>,
@@ -49,7 +52,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(map: Map) -> Self {
+    pub fn new(map: Map, sounds: Sounds) -> Self {
         let mut physics = Physics::default();
         let seed = (get_time() % 1. * (u64::MAX as f64)) as u64;
         info!("Random Seed: {}", seed);
@@ -97,6 +100,7 @@ impl Game {
         Self {
             state: GameState::MainMenu,
             map,
+            sounds,
             player,
             guards,
             guard_doors,
@@ -110,9 +114,13 @@ impl Game {
     }
 
     pub async fn load() -> Result<Self> {
+        info!("LOADING MAP");
         let map = Map::load().await?;
+        info!("LOADING SOUNDS");
+        let sounds = Sounds::load().await?;
+        info!("LOADED ALL ASSETS");
 
-        Ok(Self::new(map))
+        Ok(Self::new(map, sounds))
     }
 
     pub fn reset(&mut self) {
@@ -174,7 +182,7 @@ impl Game {
     pub async fn run_state(&mut self) -> Result<()> {
         loop {
             self.state = match &mut self.state {
-                GameState::MainMenu => MainMenu::new().run().await?,
+                GameState::MainMenu => MainMenu::new(&self.sounds).run().await?,
                 GameState::Instructions => InstructionsMenu::new().run().await?,
                 GameState::InGame => {
                     let result = self.run().await?;
