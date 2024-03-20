@@ -135,3 +135,5 @@ pub const PLAYER_GUARD_KNOCKBACK: f32 = 96.;
 pub const PLAYER_ATTACK_KNOCKBACK: f32 = 256.;
 pub const GUARD_ALERT_DISTANCE: f32 = 10.;
 pub const PLAYER_ATTACK_RADIUS: f32 = 1.6;
+
+pub const DEATH_LINGER_TIME: f64 = 3.;

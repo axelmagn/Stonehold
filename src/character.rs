@@ -57,6 +57,7 @@ pub struct Character {
     last_damage_time: f64,
     last_knockback_time: f64,
     last_alerted: f64,
+    pub death_time: f64,
 }
 
 impl Character {
@@ -88,6 +89,7 @@ impl Character {
             last_damage_time: 0.,
             last_knockback_time: 0.,
             last_alerted: 0.,
+            death_time: 0.,
         }
     }
 
@@ -292,11 +294,15 @@ impl Character {
     }
 
     pub fn deal_damage(&mut self, amount: u32) {
-        if !self.can_damage() {
+        if !self.can_damage() || !self.is_alive() {
             return;
         }
         self.health -= amount.min(self.health);
         self.last_damage_time = get_time();
+
+        if !self.is_alive() {
+            self.death_time = get_time();
+        }
     }
 
     pub fn apply_knockback(&mut self, delta_velocity: Vec2) {

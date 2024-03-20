@@ -1,13 +1,15 @@
 use crate::{
     camera::Cameras,
     character::Character,
-    constants::{GUARD_SPRITE_ID, SIMULATED_RESOLUTION, TERRAIN_MAP_ID, TILESET_MAP_ID},
+    constants::{
+        DEATH_LINGER_TIME, GUARD_SPRITE_ID, SIMULATED_RESOLUTION, TERRAIN_MAP_ID, TILESET_MAP_ID,
+    },
     door::{ExitDoor, GuardDoor},
     map::{
         mapgen::{MapGenResult, MapGenerator},
         Map,
     },
-    menus::MainMenu,
+    menus::{GameOverMenu, InstructionsMenu, MainMenu},
     physics::Physics,
 };
 use anyhow::Result;
@@ -43,7 +45,7 @@ pub struct Game {
     pub cameras: Cameras,
     pub score: u32,
     pub score_target: u32,
-    pub main_menu: MainMenu,
+    pub game_over_message: String,
 }
 
 impl Game {
@@ -103,7 +105,7 @@ impl Game {
             cameras: Cameras::new(),
             score: 0,
             score_target,
-            main_menu: MainMenu::new(),
+            game_over_message: String::new(),
         }
     }
 
@@ -113,6 +115,58 @@ impl Game {
         Ok(Self::new(map))
     }
 
+    pub fn reset(&mut self) {
+        let mut physics = Physics::default();
+        let seed = (get_time() % 1. * (u64::MAX as f64)) as u64;
+        info!("Random Seed: {}", seed);
+        srand(seed);
+
+        let mapgen = MapGenerator::new(uvec2(
+            self.map.tile_map.raw_tiled_map.width,
+            self.map.tile_map.raw_tiled_map.height,
+        ));
+
+        let MapGenResult {
+            rooms,
+            layer,
+            guard_doors,
+            exit_door,
+        } = mapgen.generate_layer();
+        self.map
+            .tile_map
+            .layers
+            .insert(TERRAIN_MAP_ID.into(), layer);
+        info!("rooms: {:?}", rooms);
+
+        let player = Character::create_player(
+            rooms[0].center(),
+            &mut physics.colliders,
+            &mut physics.bodies,
+        );
+
+        let guards: Vec<Character> = rooms[1..]
+            .iter()
+            .map(|room| {
+                Character::create_guard(room.center(), &mut physics.colliders, &mut physics.bodies)
+            })
+            .collect();
+
+        let guard_doors: Vec<GuardDoor> = guard_doors
+            .iter()
+            .map(|position| GuardDoor::create(*position, &mut physics.colliders))
+            .collect();
+
+        let exit_door = ExitDoor::create(exit_door, &mut physics.colliders);
+
+        self.physics = physics;
+        self.player = player;
+        self.guards = guards;
+        self.guard_doors = guard_doors;
+        self.exit_door = exit_door;
+        self.score = 0;
+        self.setup();
+    }
+
     pub fn setup(&mut self) {
         self.map.init_colliders(&mut self.physics.colliders);
     }
@@ -120,10 +174,14 @@ impl Game {
     pub async fn run_state(&mut self) -> Result<()> {
         loop {
             self.state = match &mut self.state {
-                GameState::MainMenu => self.main_menu.run().await?,
-                GameState::Instructions => todo!(),
-                GameState::InGame => self.run().await?,
-                GameState::GameOver => todo!(),
+                GameState::MainMenu => MainMenu::new().run().await?,
+                GameState::Instructions => InstructionsMenu::new().run().await?,
+                GameState::InGame => {
+                    let result = self.run().await?;
+                    self.reset();
+                    result
+                }
+                GameState::GameOver => GameOverMenu::new(&self.game_over_message).run().await?,
                 GameState::Exit => return Ok(()),
             }
         }
@@ -227,8 +285,18 @@ impl Game {
             ) == Some(true)
         {
             // TODO(axelmagn): transition to victory screen
-            info!("YOU WIN!!!");
-            self.state = GameState::Exit;
+            info!("YOU WIN!");
+            self.game_over_message = String::from("You Escaped!");
+            self.state = GameState::GameOver;
+            return;
+        }
+
+        // handle player death
+        if !self.player.is_alive() && get_time() > self.player.death_time + DEATH_LINGER_TIME {
+            info!("YOU LOSE!");
+            self.game_over_message = String::from("You Got Clobbered!");
+            self.state = GameState::GameOver;
+            return;
         }
 
         while let Ok(_contact_force_event) = contact_force_recv.try_recv() {
