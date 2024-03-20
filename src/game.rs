@@ -15,6 +15,7 @@ use crate::{
 };
 use anyhow::Result;
 use macroquad::{
+    audio::play_sound_once,
     camera::set_camera,
     color::{Color, DARKGRAY, WHITE},
     logging::info,
@@ -75,12 +76,18 @@ impl Game {
             rooms[0].center(),
             &mut physics.colliders,
             &mut physics.bodies,
+            &sounds,
         );
 
         let guards = rooms[1..]
             .iter()
             .map(|room| {
-                Character::create_guard(room.center(), &mut physics.colliders, &mut physics.bodies)
+                Character::create_guard(
+                    room.center(),
+                    &mut physics.colliders,
+                    &mut physics.bodies,
+                    &sounds,
+                )
             })
             .collect();
 
@@ -90,8 +97,8 @@ impl Game {
             .collect();
 
         // DEBUG
-        // let score_target = guard_doors.len() as u32 / 2;
-        let score_target = 1;
+        let score_target = guard_doors.len() as u32 / 2;
+        // let score_target = 1;
 
         let exit_door = ExitDoor::create(exit_door, &mut physics.colliders);
 
@@ -148,12 +155,18 @@ impl Game {
             rooms[0].center(),
             &mut physics.colliders,
             &mut physics.bodies,
+            &self.sounds,
         );
 
         let guards: Vec<Character> = rooms[1..]
             .iter()
             .map(|room| {
-                Character::create_guard(room.center(), &mut physics.colliders, &mut physics.bodies)
+                Character::create_guard(
+                    room.center(),
+                    &mut physics.colliders,
+                    &mut physics.bodies,
+                    &self.sounds,
+                )
             })
             .collect();
 
@@ -268,6 +281,7 @@ impl Game {
                 {
                     door.close_door(self.map.tile_map.layers.get_mut(TERRAIN_MAP_ID).unwrap());
                     removed_guards.push(j);
+                    play_sound_once(&self.sounds.close_door);
                 }
             }
         }
@@ -297,6 +311,7 @@ impl Game {
             info!("YOU WIN!");
             self.game_over_message = String::from("You Escaped!");
             self.state = GameState::GameOver;
+            play_sound_once(&self.sounds.victory);
             return;
         }
 
@@ -305,6 +320,7 @@ impl Game {
             info!("YOU LOSE!");
             self.game_over_message = String::from("You Got Clobbered!");
             self.state = GameState::GameOver;
+            play_sound_once(&self.sounds.defeat);
             return;
         }
 

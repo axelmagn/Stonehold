@@ -1,4 +1,5 @@
 use macroquad::{
+    audio::{play_sound, play_sound_once},
     color::WHITE,
     input::{is_key_down, is_mouse_button_down, mouse_position_local, KeyCode, MouseButton},
     logging::info,
@@ -16,6 +17,7 @@ use rapier2d::{
 };
 
 use crate::{
+    audio::Sounds,
     constants::{
         ALERTED_INDICATOR_COOLDOWN, ATTACK_COOLDOWN, ATTACK_DURATION, DAMAGE_COOLDOWN,
         GRAVE_TILE_ID, GUARD_ACCELERATION, GUARD_ALERT_DISTANCE, GUARD_BRAKING, GUARD_FRICTION,
@@ -59,6 +61,7 @@ pub struct Character {
     last_alerted: f64,
     pub death_time: f64,
     pub draw_attack: bool,
+    pub sounds: Sounds,
 }
 
 impl Character {
@@ -66,6 +69,7 @@ impl Character {
         position: Vec2,
         collider_set: &mut ColliderSet,
         rigid_body_set: &mut RigidBodySet,
+        sounds: Sounds,
     ) -> Self {
         let (collider_handle, body_handle, attack_collider_handle) =
             T::init_physics(position, collider_set, rigid_body_set);
@@ -92,6 +96,7 @@ impl Character {
             last_alerted: 0.,
             death_time: 0.,
             draw_attack: T::draw_attack(),
+            sounds,
         }
     }
 
@@ -99,16 +104,18 @@ impl Character {
         position: Vec2,
         collider_set: &mut ColliderSet,
         rigid_body_set: &mut RigidBodySet,
+        sounds: &Sounds,
     ) -> Self {
-        Self::create::<PlayerConfigProvider>(position, collider_set, rigid_body_set)
+        Self::create::<PlayerConfigProvider>(position, collider_set, rigid_body_set, sounds.clone())
     }
 
     pub fn create_guard(
         position: Vec2,
         collider_set: &mut ColliderSet,
         rigid_body_set: &mut RigidBodySet,
+        sounds: &Sounds,
     ) -> Self {
-        Self::create::<GuardConfigProvider>(position, collider_set, rigid_body_set)
+        Self::create::<GuardConfigProvider>(position, collider_set, rigid_body_set, sounds.clone())
     }
 
     pub fn collect_player_inputs(&mut self) {
@@ -129,6 +136,9 @@ impl Character {
         if is_mouse_button_down(MouseButton::Left)
             && get_time() > self.last_attack_start + ATTACK_COOLDOWN
         {
+            if (!self.is_attacking) {
+                play_sound_once(&self.sounds.attack);
+            }
             self.is_attacking = true;
             self.last_attack_start = get_time();
         }
@@ -326,6 +336,7 @@ impl Character {
 
         self.accumulated_knockback += delta_velocity;
         self.last_knockback_time = get_time();
+        play_sound_once(&self.sounds.knockback);
     }
 
     pub fn check_guard_distance(&mut self, player: &Character) {
@@ -342,6 +353,7 @@ impl Character {
         }
         self.is_alerted = true;
         self.last_alerted = get_time();
+        play_sound_once(&self.sounds.alert);
     }
 
     pub fn destroy_physics(&mut self, physics: &mut Physics) {

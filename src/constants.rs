@@ -27,6 +27,15 @@ pub const TERRAIN_MAP_ID: &str = "terrain";
 pub const TILE_MAP_JSON_PATH: &str = "assets/tiled/export/sandbox03.tmj";
 
 pub const CLICK_SOUND_PATH: &str = "assets/kenney_interface-sounds/Audio/click_004.ogg";
+pub const ATTACK_SOUND_PATH: &str = "assets/kenney_impact-sounds/Audio/impactPunch_heavy_001.ogg";
+pub const KNOCKBACK_SOUND_PATH: &str = "assets/kenney_impact-sounds/Audio/impactBell_heavy_002.ogg";
+pub const ALERT_SOUND_PATH: &str =
+    "assets/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI00.ogg";
+pub const DOOR_CLOSE_SOUND_PATH: &str = "assets/kenney_rpg-audio/Audio/doorClose_1.ogg";
+pub const VICTORY_SOUND_PATH: &str =
+    "assets/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI10.ogg";
+pub const DEFEAT_SOUND_PATH: &str =
+    "assets/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI07.ogg";
 
 // TODO(axelmagn): fill this out
 /// Tile ID ranges which should be treated as solid
@@ -112,7 +121,7 @@ pub const PLAYER_MASS: f32 = 100.;
 pub const PLAYER_RADIUS: f32 = 0.5;
 pub const PLAYER_RESTITUTION: f32 = 0.5;
 pub const PLAYER_SPRITE_ID: u32 = 85;
-pub const PLAYER_MAX_HEALTH: u32 = 10;
+pub const PLAYER_MAX_HEALTH: u32 = 3;
 
 pub const GUARD_ACCELERATION: f32 = 24.;
 pub const GUARD_BRAKING: f32 = 10.;
@@ -140,4 +149,4 @@ pub const PLAYER_ATTACK_KNOCKBACK: f32 = 256.;
 pub const GUARD_ALERT_DISTANCE: f32 = 10.;
 pub const PLAYER_ATTACK_RADIUS: f32 = 1.6;
 
-pub const DEATH_LINGER_TIME: f64 = 3.;
+pub const DEATH_LINGER_TIME: f64 = 1.;
