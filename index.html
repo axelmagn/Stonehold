@@ -17,17 +17,25 @@
       z-index: 0;
     }
   </style>
+  <!-- <script>
+    var stonehold_loaded = false;
+    function load_stonehold() {
+      if(!stonehold_loaded) {
+      load("target/wasm32-unknown-unknown/debug/stonehold.wasm");
+      stonehold_loaded = true;
+      }
+    }
+  </script> -->
 </head>
 
 <body>
   <h1>Stonehold</h1>
-  <canvas id="glcanvas" tabindex='1'></canvas>
+  <canvas id="glcanvas" tabindex='1' onclick="load_stonehold()"></canvas>
   <!-- Minified and statically hosted version of https://github.com/not-fl3/macroquad/blob/master/js/mq_js_bundle.js -->
   <!-- <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script> -->
   <script src="web/mq_js_bundle.js"></script>
-  <script>load("target/wasm32-unknown-unknown/debug/stonehold.wasm");</script>
   <!-- Your compiled wasm file -->
-
+  <script>load("target/wasm32-unknown-unknown/debug/stonehold.wasm");</script>
   <p>Loading complete</p>
 </body>
 
