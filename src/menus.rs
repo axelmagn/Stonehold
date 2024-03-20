@@ -128,7 +128,7 @@ impl InstructionsMenu {
 
             if ui.button(
                 vec2(screen_width() / 2. - 64., screen_height() * 7. / 8.),
-                "Escape",
+                "Begin",
             ) {
                 // TODO(axelmagn): play sound
                 // TODO(axelmagn): transition to instructions
