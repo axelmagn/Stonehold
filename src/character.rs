@@ -58,6 +58,7 @@ pub struct Character {
     last_knockback_time: f64,
     last_alerted: f64,
     pub death_time: f64,
+    pub draw_attack: bool,
 }
 
 impl Character {
@@ -90,6 +91,7 @@ impl Character {
             last_knockback_time: 0.,
             last_alerted: 0.,
             death_time: 0.,
+            draw_attack: T::draw_attack(),
         }
     }
 
@@ -127,10 +129,10 @@ impl Character {
         if is_mouse_button_down(MouseButton::Left)
             && get_time() > self.last_attack_start + ATTACK_COOLDOWN
         {
-            self.attack_direction = mouse_position_local().normalize_or_zero();
             self.is_attacking = true;
             self.last_attack_start = get_time();
         }
+        self.attack_direction = mouse_position_local().normalize_or_zero();
 
         self.input_direction = self.input_direction.normalize_or_zero();
     }
@@ -159,16 +161,14 @@ impl Character {
         }
 
         // set the attack collider position. attack collider is always centered around the player radius in the attack direction.
-        if self.is_attacking {
-            if let Some(attack_collider_handle) = self.attack_collider_handle {
-                let attack_collider = &mut physics.colliders[attack_collider_handle];
-                let attack_direction = vector![self.attack_direction.x, self.attack_direction.y]
-                    * (PLAYER_ATTACK_RADIUS - PLAYER_RADIUS);
-                attack_collider.set_position_wrt_parent(Isometry::translation(
-                    attack_direction.x,
-                    attack_direction.y,
-                ));
-            }
+        if let Some(attack_collider_handle) = self.attack_collider_handle {
+            let attack_collider = &mut physics.colliders[attack_collider_handle];
+            let attack_direction = vector![self.attack_direction.x, self.attack_direction.y]
+                * (PLAYER_ATTACK_RADIUS - PLAYER_RADIUS);
+            attack_collider.set_position_wrt_parent(Isometry::translation(
+                attack_direction.x,
+                attack_direction.y,
+            ));
         }
 
         // move the player
@@ -217,13 +217,27 @@ impl Character {
 
     pub fn draw(&self, tile_map: &TiledMap) {
         // draw attack
-        if self.is_attacking && self.is_alive() {
-            draw_circle(
-                self.attack_position.x,
-                self.attack_position.y,
-                PLAYER_ATTACK_RADIUS,
-                WHITE,
-            )
+        if self.draw_attack && self.is_alive() {
+            if self.is_attacking {
+                draw_circle(
+                    self.attack_position.x,
+                    self.attack_position.y,
+                    PLAYER_ATTACK_RADIUS,
+                    WHITE,
+                )
+            } else {
+                let draw_rect = Rect::new(
+                    self.attack_position.x - 0.5,
+                    self.attack_position.y - 0.5,
+                    1.,
+                    1.,
+                );
+                tile_map.spr(
+                    TILESET_MAP_ID,
+                    60, /* todo: move to constant */
+                    draw_rect,
+                );
+            }
         }
 
         // draw player
@@ -355,6 +369,7 @@ pub trait CharacterConfigProvider {
     fn get_braking() -> f32;
     fn get_max_health() -> u32;
     fn destroy_on_death() -> bool;
+    fn draw_attack() -> bool;
 
     fn init_physics(
         position: Vec2,
@@ -418,6 +433,10 @@ impl CharacterConfigProvider for PlayerConfigProvider {
     fn destroy_on_death() -> bool {
         false
     }
+
+    fn draw_attack() -> bool {
+        true
+    }
 }
 
 struct GuardConfigProvider;
@@ -465,5 +484,9 @@ impl CharacterConfigProvider for GuardConfigProvider {
 
     fn destroy_on_death() -> bool {
         true
+    }
+
+    fn draw_attack() -> bool {
+        false
     }
 }
