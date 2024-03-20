@@ -26,7 +26,7 @@ pub const TERRAIN_MAP_ID: &str = "terrain";
 // pub const TILE_MAP_JSON_PATH: &str = "assets/tiled/export/sandbox01.tmj";
 pub const TILE_MAP_JSON_PATH: &str = "assets/tiled/export/sandbox03.tmj";
 
-pub const CLICK_SOUND_PATH: &str = "assets/kenney_interface-sounds/Audio/click_005.ogg";
+pub const CLICK_SOUND_PATH: &str = "assets/kenney_interface-sounds/Audio/click_004.ogg";
 
 // TODO(axelmagn): fill this out
 /// Tile ID ranges which should be treated as solid

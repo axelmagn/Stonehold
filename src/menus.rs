@@ -60,13 +60,15 @@ impl MainMenu {
 pub struct InstructionsMenu {
     skin: Skin,
     next_state: Option<GameState>,
+    sounds: Sounds,
 }
 
 impl InstructionsMenu {
-    pub fn new() -> Self {
+    pub fn new(sounds: &Sounds) -> Self {
         Self {
             skin: Self::make_skin(),
             next_state: None,
+            sounds: sounds.clone(),
         }
     }
 
@@ -133,6 +135,7 @@ impl InstructionsMenu {
                 // TODO(axelmagn): play sound
                 // TODO(axelmagn): transition to instructions
                 self.next_state = Some(GameState::InGame);
+                play_sound_once(&self.sounds.click);
             };
         });
     }
@@ -142,14 +145,16 @@ pub struct GameOverMenu {
     message: String,
     skin: Skin,
     next_state: Option<GameState>,
+    sounds: Sounds,
 }
 
 impl GameOverMenu {
-    pub fn new(message: &str) -> Self {
+    pub fn new(message: &str, sounds: &Sounds) -> Self {
         Self {
             message: message.into(),
             skin: base_skin(),
             next_state: None,
+            sounds: sounds.clone(),
         }
     }
 
@@ -178,6 +183,7 @@ impl GameOverMenu {
             ) {
                 // TODO(axelmagn): play sound
                 self.next_state = Some(GameState::InGame);
+                play_sound_once(&self.sounds.click);
             };
             if ui.button(
                 vec2(screen_width() / 2. - 64., screen_height() * 4. / 5.),
@@ -185,6 +191,7 @@ impl GameOverMenu {
             ) {
                 // TODO(axelmagn): play sound
                 self.next_state = Some(GameState::MainMenu);
+                play_sound_once(&self.sounds.click);
             };
         });
     }

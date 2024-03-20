@@ -15,7 +15,6 @@ use crate::{
 };
 use anyhow::Result;
 use macroquad::{
-    audio::Sound,
     camera::set_camera,
     color::{Color, DARKGRAY, WHITE},
     logging::info,
@@ -33,7 +32,6 @@ pub enum GameState {
     Instructions,
     InGame,
     GameOver,
-    Exit,
 }
 
 pub struct Game {
@@ -183,14 +181,17 @@ impl Game {
         loop {
             self.state = match &mut self.state {
                 GameState::MainMenu => MainMenu::new(&self.sounds).run().await?,
-                GameState::Instructions => InstructionsMenu::new().run().await?,
+                GameState::Instructions => InstructionsMenu::new(&self.sounds).run().await?,
                 GameState::InGame => {
                     let result = self.run().await?;
                     self.reset();
                     result
                 }
-                GameState::GameOver => GameOverMenu::new(&self.game_over_message).run().await?,
-                GameState::Exit => return Ok(()),
+                GameState::GameOver => {
+                    GameOverMenu::new(&self.game_over_message, &self.sounds)
+                        .run()
+                        .await?
+                }
             }
         }
     }
