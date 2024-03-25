@@ -103,8 +103,8 @@ impl Game {
             .collect();
 
         // DEBUG
-        let score_target = 1;
-        // let score_target = guard_doors.len() as u32 / 2;
+        // let score_target = 1;
+        let score_target = guard_doors.len() as u32 / 2;
 
         let exit_door = ExitDoor::create(exit_door, &mut physics.colliders);
 

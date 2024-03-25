@@ -202,20 +202,20 @@ impl GameOverMenu {
         root_ui().push_skin(&self.skin);
         root_ui().window(0, vec2(0., 0.), vec2(300., 300.), |ui| {
             ui.label(
-                Some(vec2(screen_width() / 2. - 350., screen_height() * 1. / 6.)),
+                Some(vec2(screen_width() / 2. - 96., screen_height() * 1. / 6.)),
                 &self.message,
             );
 
             if self.show_times {
                 if let Some(run_time) = self.run_time {
                     ui.label(
-                        Some(vec2(screen_width() / 2. - 350., screen_height() * 2. / 6.)),
+                        Some(vec2(screen_width() / 2. - 96., screen_height() * 2. / 6.)),
                         &format!("Run time: {}", time_str(run_time)),
                     );
                 }
                 if let Some(best_time) = self.best_time {
                     ui.label(
-                        Some(vec2(screen_width() / 2. - 350., screen_height() * 3. / 6.)),
+                        Some(vec2(screen_width() / 2. - 96., screen_height() * 3. / 6.)),
                         &format!("Best time: {}", time_str(best_time)),
                     );
                 }

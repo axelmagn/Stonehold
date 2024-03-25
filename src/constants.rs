@@ -120,7 +120,7 @@ pub const PLAYER_LINEAR_DAMPING: f32 = 2.;
 pub const PLAYER_MASS: f32 = 100.;
 pub const PLAYER_RADIUS: f32 = 0.5;
 pub const PLAYER_RESTITUTION: f32 = 0.5;
-pub const PLAYER_SPRITE_ID: u32 = 85;
+pub const PLAYER_SPRITE_ID: u32 = 85 + 27;
 pub const PLAYER_MAX_HEALTH: u32 = 5;
 
 pub const GUARD_ACCELERATION: f32 = 24.;
