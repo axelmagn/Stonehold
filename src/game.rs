@@ -50,6 +50,10 @@ pub struct Game {
     pub score_target: u32,
     pub game_over_message: String,
     pub arrow_texture: Texture2D,
+    pub start_time: f64,
+    pub run_time: Option<f64>,
+    pub best_time: Option<f64>,
+    pub won_last_round: bool,
 }
 
 impl Game {
@@ -118,6 +122,10 @@ impl Game {
             score_target,
             game_over_message: String::new(),
             arrow_texture,
+            start_time: get_time(),
+            run_time: None,
+            best_time: None,
+            won_last_round: false,
         }
     }
 
@@ -199,14 +207,21 @@ impl Game {
                 GameState::MainMenu => MainMenu::new(&self.sounds).run().await?,
                 GameState::Instructions => InstructionsMenu::new(&self.sounds).run().await?,
                 GameState::InGame => {
+                    self.start_time = get_time();
                     let result = self.run().await?;
                     self.reset();
                     result
                 }
                 GameState::GameOver => {
-                    GameOverMenu::new(&self.game_over_message, &self.sounds)
-                        .run()
-                        .await?
+                    GameOverMenu::new(
+                        &self.game_over_message,
+                        &self.sounds,
+                        self.won_last_round,
+                        self.run_time,
+                        self.best_time,
+                    )
+                    .run()
+                    .await?
                 }
             }
         }
@@ -310,9 +325,15 @@ impl Game {
                 self.exit_door.collider_handle,
             ) == Some(true)
         {
-            // TODO(axelmagn): transition to victory screen
-            info!("YOU WIN!");
             self.game_over_message = String::from("You Escaped!");
+            let time_elapsed = get_time() - self.start_time;
+            self.run_time = Some(time_elapsed);
+            match self.best_time {
+                Some(prev_time) if prev_time > time_elapsed => self.best_time = Some(time_elapsed),
+                None => self.best_time = Some(time_elapsed),
+                _ => {}
+            }
+            self.won_last_round = true;
             self.state = GameState::GameOver;
             play_sound_once(&self.sounds.victory);
             return;
@@ -323,6 +344,7 @@ impl Game {
             info!("YOU LOSE!");
             self.game_over_message = String::from("You Got Clobbered!");
             self.state = GameState::GameOver;
+            self.won_last_round = false;
             play_sound_once(&self.sounds.defeat);
             return;
         }
@@ -404,6 +426,14 @@ impl Game {
             48.,
             WHITE,
         );
+
+        // draw timer
+        draw_text(&self.elapsed_time_str(), 16., 96., 48., WHITE)
+    }
+
+    fn elapsed_time_str(&self) -> String {
+        let t = (get_time() - self.start_time) as u64;
+        format!("{:02}:{:02}", t / 60, t % 60)
     }
 
     fn draw_screen(&self) {

@@ -146,15 +146,27 @@ pub struct GameOverMenu {
     skin: Skin,
     next_state: Option<GameState>,
     sounds: Sounds,
+    show_times: bool,
+    run_time: Option<f64>,
+    best_time: Option<f64>,
 }
 
 impl GameOverMenu {
-    pub fn new(message: &str, sounds: &Sounds) -> Self {
+    pub fn new(
+        message: &str,
+        sounds: &Sounds,
+        show_times: bool,
+        run_time: Option<f64>,
+        best_time: Option<f64>,
+    ) -> Self {
         Self {
             message: message.into(),
-            skin: base_skin(),
+            skin: Self::make_skin(),
             next_state: None,
             sounds: sounds.clone(),
+            show_times,
+            run_time,
+            best_time,
         }
     }
 
@@ -168,17 +180,49 @@ impl GameOverMenu {
         }
     }
 
+    fn make_skin() -> Skin {
+        let label_style = root_ui()
+            .style_builder()
+            .font(include_bytes!(
+                "../assets/kenney_kenney-fonts/Fonts/Kenney Pixel.ttf"
+            ))
+            .unwrap()
+            .text_color(WHITE)
+            .font_size(48)
+            .build();
+
+        Skin {
+            label_style,
+            ..base_skin()
+        }
+    }
+
     pub fn draw(&mut self) {
         clear_background(DARKGRAY);
         root_ui().push_skin(&self.skin);
         root_ui().window(0, vec2(0., 0.), vec2(300., 300.), |ui| {
             ui.label(
-                Some(vec2(screen_width() / 2. - 350., screen_height() * 1. / 5.)),
+                Some(vec2(screen_width() / 2. - 350., screen_height() * 1. / 6.)),
                 &self.message,
             );
 
+            if self.show_times {
+                if let Some(run_time) = self.run_time {
+                    ui.label(
+                        Some(vec2(screen_width() / 2. - 350., screen_height() * 2. / 6.)),
+                        &format!("Run time: {}", time_str(run_time)),
+                    );
+                }
+                if let Some(best_time) = self.best_time {
+                    ui.label(
+                        Some(vec2(screen_width() / 2. - 350., screen_height() * 3. / 6.)),
+                        &format!("Best time: {}", time_str(best_time)),
+                    );
+                }
+            }
+
             if ui.button(
-                vec2(screen_width() / 2. - 64., screen_height() * 3. / 5.),
+                vec2(screen_width() / 2. - 64., screen_height() * 4. / 6.),
                 "Play Again",
             ) {
                 // TODO(axelmagn): play sound
@@ -186,7 +230,7 @@ impl GameOverMenu {
                 play_sound_once(&self.sounds.click);
             };
             if ui.button(
-                vec2(screen_width() / 2. - 64., screen_height() * 4. / 5.),
+                vec2(screen_width() / 2. - 64., screen_height() * 5. / 6.),
                 "Main Menu",
             ) {
                 // TODO(axelmagn): play sound
@@ -195,6 +239,10 @@ impl GameOverMenu {
             };
         });
     }
+}
+
+pub fn time_str(time: f64) -> String {
+    format!("{:02}:{:02.4}", time as u64 / 60, time % 60.)
 }
 
 pub fn base_skin() -> Skin {
