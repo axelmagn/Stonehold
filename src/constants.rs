@@ -150,3 +150,6 @@ pub const GUARD_ALERT_DISTANCE: f32 = 10.;
 pub const PLAYER_ATTACK_RADIUS: f32 = 1.6;
 
 pub const DEATH_LINGER_TIME: f64 = 1.;
+
+pub const PLAYER_KNOCKBACK_COOLDOWN: f64 = 0.1;
+pub const GUARD_KNOCKBACK_COOLDOWN: f64 = 1.0;

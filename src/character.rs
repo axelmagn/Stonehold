@@ -21,12 +21,13 @@ use crate::{
     constants::{
         ALERTED_INDICATOR_COOLDOWN, ATTACK_COOLDOWN, ATTACK_DURATION, DAMAGE_COOLDOWN,
         GRAVE_TILE_ID, GUARD_ACCELERATION, GUARD_ALERT_DISTANCE, GUARD_BRAKING, GUARD_FRICTION,
-        GUARD_FRICTION_COMBINE_RULE, GUARD_LINEAR_DAMPING, GUARD_MASS, GUARD_MAX_HEALTH,
-        GUARD_RADIUS, GUARD_RESTITUTION, GUARD_SPRITE_ID, HEART_TILE_ID, KNOCKBACK_COOLDOWN,
-        PLAYER_ACCELERATION, PLAYER_ATTACK_KNOCKBACK, PLAYER_ATTACK_RADIUS, PLAYER_BRAKING,
-        PLAYER_FRICTION, PLAYER_FRICTION_COMBINE_RULE, PLAYER_GUARD_KNOCKBACK,
-        PLAYER_LINEAR_DAMPING, PLAYER_MASS, PLAYER_MAX_HEALTH, PLAYER_RADIUS, PLAYER_RESTITUTION,
-        PLAYER_SPRITE_ID, QUESTION_MARK_TILE_ID, SIMULATED_TILE_PX, TILESET_MAP_ID,
+        GUARD_FRICTION_COMBINE_RULE, GUARD_KNOCKBACK_COOLDOWN, GUARD_LINEAR_DAMPING, GUARD_MASS,
+        GUARD_MAX_HEALTH, GUARD_RADIUS, GUARD_RESTITUTION, GUARD_SPRITE_ID, HEART_TILE_ID,
+        KNOCKBACK_COOLDOWN, PLAYER_ACCELERATION, PLAYER_ATTACK_KNOCKBACK, PLAYER_ATTACK_RADIUS,
+        PLAYER_BRAKING, PLAYER_FRICTION, PLAYER_FRICTION_COMBINE_RULE, PLAYER_GUARD_KNOCKBACK,
+        PLAYER_KNOCKBACK_COOLDOWN, PLAYER_LINEAR_DAMPING, PLAYER_MASS, PLAYER_MAX_HEALTH,
+        PLAYER_RADIUS, PLAYER_RESTITUTION, PLAYER_SPRITE_ID, QUESTION_MARK_TILE_ID,
+        SIMULATED_TILE_PX, TILESET_MAP_ID,
     },
     physics::Physics,
 };
@@ -62,6 +63,7 @@ pub struct Character {
     pub death_time: f64,
     pub draw_attack: bool,
     pub sounds: Sounds,
+    pub knockback_cooldown: f64,
 }
 
 impl Character {
@@ -97,6 +99,7 @@ impl Character {
             death_time: 0.,
             draw_attack: T::draw_attack(),
             sounds,
+            knockback_cooldown: T::knockback_cooldown(),
         }
     }
 
@@ -182,22 +185,24 @@ impl Character {
         }
 
         // move the player
-        let body = &mut physics.bodies[self.body_handle.unwrap()];
+        if !self.is_knockback_stunned() {
+            let body = &mut physics.bodies[self.body_handle.unwrap()];
 
-        let move_acc = self.input_direction * self.acceleration;
-        let move_acc = vector![move_acc.x, move_acc.y];
+            let move_acc = self.input_direction * self.acceleration;
+            let move_acc = vector![move_acc.x, move_acc.y];
 
-        let vel_dir = vec2(body.linvel().x, body.linvel().y).normalize_or_zero();
-        let braking_acc =
-            (self.input_direction - vel_dir) * body.linvel().magnitude() * self.braking;
-        let braking_acc = vector![braking_acc.x, braking_acc.y];
+            let vel_dir = vec2(body.linvel().x, body.linvel().y).normalize_or_zero();
+            let braking_acc =
+                (self.input_direction - vel_dir) * body.linvel().magnitude() * self.braking;
+            let braking_acc = vector![braking_acc.x, braking_acc.y];
 
-        let knockback = vector![self.accumulated_knockback.x, self.accumulated_knockback.y];
-        self.accumulated_knockback = Vec2::ZERO;
+            let knockback = vector![self.accumulated_knockback.x, self.accumulated_knockback.y];
+            self.accumulated_knockback = Vec2::ZERO;
 
-        let dt = get_frame_time();
-        let new_linvel = body.linvel() + move_acc * dt + braking_acc * dt + knockback;
-        body.set_linvel(new_linvel, true);
+            let dt = get_frame_time();
+            let new_linvel = body.linvel() + move_acc * dt + braking_acc * dt + knockback;
+            body.set_linvel(new_linvel, true);
+        }
 
         // latch facing direction on nonzero input direction
         if self.input_direction.x > 0. {
@@ -296,6 +301,10 @@ impl Character {
         }
     }
 
+    pub fn is_knockback_stunned(&self) -> bool {
+        get_time() < self.last_knockback_time + self.knockback_cooldown
+    }
+
     pub fn is_alive(&self) -> bool {
         self.health > 0
     }
@@ -386,6 +395,7 @@ pub trait CharacterConfigProvider {
     fn get_max_health() -> u32;
     fn destroy_on_death() -> bool;
     fn draw_attack() -> bool;
+    fn knockback_cooldown() -> f64;
 
     fn init_physics(
         position: Vec2,
@@ -453,6 +463,10 @@ impl CharacterConfigProvider for PlayerConfigProvider {
     fn draw_attack() -> bool {
         true
     }
+
+    fn knockback_cooldown() -> f64 {
+        PLAYER_KNOCKBACK_COOLDOWN
+    }
 }
 
 struct GuardConfigProvider;
@@ -504,5 +518,9 @@ impl CharacterConfigProvider for GuardConfigProvider {
 
     fn draw_attack() -> bool {
         false
+    }
+
+    fn knockback_cooldown() -> f64 {
+        GUARD_KNOCKBACK_COOLDOWN
     }
 }
