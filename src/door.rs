@@ -1,4 +1,7 @@
-use macroquad::{logging::info, math::UVec2};
+use macroquad::{
+    logging::info,
+    math::{vec2, UVec2, Vec2},
+};
 use macroquad_tiled::{Layer, Tile};
 use nalgebra::vector;
 use rapier2d::geometry::{ColliderBuilder, ColliderHandle, ColliderSet};
@@ -50,7 +53,7 @@ impl GuardDoor {
 }
 
 pub struct ExitDoor {
-    position: UVec2,
+    pub position: UVec2,
     pub is_open: bool,
     pub collider_handle: ColliderHandle,
 }
@@ -106,5 +109,9 @@ impl ExitDoor {
             tileset: TILESET_MAP_ID.into(),
             attrs: "".into(),
         });
+    }
+
+    pub fn center(&self) -> Vec2 {
+        self.position.as_vec2() + vec2(1.0, 0.5)
     }
 }

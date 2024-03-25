@@ -373,6 +373,10 @@ impl Character {
         let knockback_dir = self.attack_direction;
         guard.apply_knockback(knockback_dir * PLAYER_ATTACK_KNOCKBACK);
     }
+
+    pub fn center(&self) -> Vec2 {
+        self.position + vec2(0.5, 0.5)
+    }
 }
 
 pub trait CharacterConfigProvider {

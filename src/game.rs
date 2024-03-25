@@ -19,9 +19,10 @@ use macroquad::{
     camera::set_camera,
     color::{Color, DARKGRAY, WHITE},
     logging::info,
-    math::{uvec2, Rect},
+    math::{uvec2, vec2, Rect},
     rand::srand,
     text::draw_text,
+    texture::{draw_texture, draw_texture_ex, load_texture, DrawTextureParams, Texture2D},
     time::get_time,
     window::{clear_background, next_frame},
 };
@@ -48,10 +49,11 @@ pub struct Game {
     pub score: u32,
     pub score_target: u32,
     pub game_over_message: String,
+    pub arrow_texture: Texture2D,
 }
 
 impl Game {
-    pub fn new(map: Map, sounds: Sounds) -> Self {
+    pub fn new(map: Map, sounds: Sounds, arrow_texture: Texture2D) -> Self {
         let mut physics = Physics::default();
         let seed = (get_time() % 1. * (u64::MAX as f64)) as u64;
         info!("Random Seed: {}", seed);
@@ -97,8 +99,8 @@ impl Game {
             .collect();
 
         // DEBUG
-        let score_target = guard_doors.len() as u32 / 2;
-        // let score_target = 1;
+        let score_target = 1;
+        // let score_target = guard_doors.len() as u32 / 2;
 
         let exit_door = ExitDoor::create(exit_door, &mut physics.colliders);
 
@@ -115,17 +117,18 @@ impl Game {
             score: 0,
             score_target,
             game_over_message: String::new(),
+            arrow_texture,
         }
     }
 
     pub async fn load() -> Result<Self> {
-        info!("LOADING MAP");
         let map = Map::load().await?;
-        info!("LOADING SOUNDS");
         let sounds = Sounds::load().await?;
+        let arrow =
+            load_texture("assets/kenney_ui-pack-rpg-expansion/PNG/arrowBlue_right.png").await?;
         info!("LOADED ALL ASSETS");
 
-        Ok(Self::new(map, sounds))
+        Ok(Self::new(map, sounds, arrow))
     }
 
     pub fn reset(&mut self) {
@@ -363,6 +366,24 @@ impl Game {
         self.guards
             .iter()
             .for_each(|guard| guard.draw(&self.map.tile_map));
+
+        // draw guidance arrow
+        if self.exit_door.is_open {
+            let door_dir = (self.exit_door.center() - self.player.center()).normalize();
+            let pos = self.player.position + door_dir * 3.;
+            let rotation = door_dir.y.atan2(door_dir.x);
+            draw_texture_ex(
+                &self.arrow_texture,
+                pos.x,
+                pos.y,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(1., 1.)),
+                    rotation,
+                    ..Default::default()
+                },
+            );
+        }
     }
 
     fn draw_ui(&self) {
