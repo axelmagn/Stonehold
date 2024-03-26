@@ -34,7 +34,7 @@ pub struct Map {
 impl Map {
     pub fn new(tile_map: TileMap) -> Self {
         let solid_tile_mask =
-            Self::create_solid_tile_mask(&tile_map.tilesets[TILESET_MAP_ID], &SOLID_TILES);
+            Self::create_solid_tile_mask(&tile_map.tilesets[TILESET_MAP_ID], SOLID_TILES);
 
         Self {
             tile_map,

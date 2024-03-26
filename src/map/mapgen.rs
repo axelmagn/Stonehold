@@ -534,7 +534,7 @@ impl MapGenerator {
         }
 
         let i0 = xytoi(x, y, layer);
-        let i1 = xytoi(x, y + 1, &layer);
+        let i1 = xytoi(x, y + 1, layer);
 
         if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
             if tile0.id != WALL_01_TILE_ID || tile1.id != GROUND_01_TILE_ID {
@@ -557,7 +557,7 @@ impl MapGenerator {
         }
 
         let i0 = xytoi(x, y, layer);
-        let i1 = xytoi(x, y + 1, &layer);
+        let i1 = xytoi(x, y + 1, layer);
 
         if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
             if tile0.id != GROUND_01_TILE_ID || tile1.id != WALL_01_TILE_ID {
@@ -580,7 +580,7 @@ impl MapGenerator {
         }
 
         let i0 = xytoi(x, y, layer);
-        let i1 = xytoi(x + 1, y, &layer);
+        let i1 = xytoi(x + 1, y, layer);
 
         if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
             if tile0.id != WALL_01_TILE_ID || tile1.id != GROUND_01_TILE_ID {
@@ -603,7 +603,7 @@ impl MapGenerator {
         }
 
         let i0 = xytoi(x, y, layer);
-        let i1 = xytoi(x + 1, y, &layer);
+        let i1 = xytoi(x + 1, y, layer);
 
         if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
             if tile0.id != GROUND_01_TILE_ID || tile1.id != WALL_01_TILE_ID {
@@ -897,7 +897,7 @@ impl MapGenerator {
         }
 
         let i0 = xytoi(x, y, layer);
-        let i1 = xytoi(x, y + 1, &layer);
+        let i1 = xytoi(x, y + 1, layer);
 
         if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
             if tile0.id != WALL_UP_TILE_ID || tile1.id != GROUND_01_TILE_ID {
@@ -920,7 +920,7 @@ impl MapGenerator {
         }
 
         let i0 = xytoi(x, y, layer);
-        let i1 = xytoi(x, y + 1, &layer);
+        let i1 = xytoi(x, y + 1, layer);
 
         if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
             if tile0.id != WALL_OUTER_DL_ID || tile1.id != GROUND_01_TILE_ID {
@@ -943,7 +943,7 @@ impl MapGenerator {
         }
 
         let i0 = xytoi(x, y, layer);
-        let i1 = xytoi(x, y + 1, &layer);
+        let i1 = xytoi(x, y + 1, layer);
 
         if let (&Some(tile0), &Some(tile1)) = (&layer.data[i0].as_ref(), &layer.data[i1].as_ref()) {
             if tile0.id != WALL_OUTER_DR_ID || tile1.id != GROUND_01_TILE_ID {
@@ -1025,7 +1025,7 @@ impl MapGenerator {
         }
 
         let mut doors: Vec<UVec2> = Vec::new();
-        while doors.len() < max_doors && candidates.len() > 0 {
+        while doors.len() < max_doors && !candidates.is_empty() {
             let pos = candidates.remove(gen_range(0, candidates.len()));
 
             // we have to check again, since doors are 2-wide their placements can interfere
@@ -1077,7 +1077,7 @@ impl MapGenerator {
             }
         }
 
-        return true;
+        true
     }
 
     fn rewrite_random_filler(&self, src: u32, dst: u32, prob: f32, layer: &mut Layer) -> u32 {

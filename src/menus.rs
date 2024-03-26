@@ -1,6 +1,6 @@
 use anyhow::Result;
 use macroquad::{
-    audio::{play_sound, play_sound_once},
+    audio::{play_sound_once},
     color::{DARKGRAY, WHITE},
     math::{vec2, RectOffset},
     texture::Image,

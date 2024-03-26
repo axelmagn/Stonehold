@@ -22,7 +22,7 @@ use macroquad::{
     math::{uvec2, vec2, Rect},
     rand::srand,
     text::draw_text,
-    texture::{draw_texture, draw_texture_ex, load_texture, DrawTextureParams, Texture2D},
+    texture::{draw_texture_ex, load_texture, DrawTextureParams, Texture2D},
     time::get_time,
     window::{clear_background, next_frame},
 };
@@ -282,12 +282,12 @@ impl Game {
 
         // handle guard door collisions
         let mut removed_guards = Vec::new();
-        for (_i, door) in self.guard_doors.iter_mut().enumerate() {
+        for door in self.guard_doors.iter_mut() {
             if !door.is_open {
                 continue;
             }
             for (j, guard) in &mut self.guards.iter_mut().enumerate() {
-                if !guard.collider_handle.is_some() {
+                if guard.collider_handle.is_none() {
                     continue;
                 }
 
@@ -451,8 +451,9 @@ impl Game {
             .find(|guard| guard.collider_handle == Some(collision_event.collider2()));
 
         if c1_is_player && guard.is_some() {
-            self.player
-                .handle_player_guard_collision(guard.as_ref().unwrap());
+            if let Some(guard) = guard {
+                self.player.handle_player_guard_collision(guard);
+            }
         }
     }
 }

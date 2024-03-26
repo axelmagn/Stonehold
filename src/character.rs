@@ -1,5 +1,5 @@
 use macroquad::{
-    audio::{play_sound, play_sound_once},
+    audio::{play_sound_once},
     color::WHITE,
     input::{is_key_down, is_mouse_button_down, mouse_position_local, KeyCode, MouseButton},
     logging::info,
@@ -139,7 +139,7 @@ impl Character {
         if is_mouse_button_down(MouseButton::Left)
             && get_time() > self.last_attack_start + ATTACK_COOLDOWN
         {
-            if (!self.is_attacking) {
+            if !self.is_attacking {
                 play_sound_once(&self.sounds.attack);
             }
             self.is_attacking = true;
