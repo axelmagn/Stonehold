@@ -8,7 +8,7 @@ use macroquad::{
     time::{get_frame_time, get_time},
 };
 use macroquad_tiled::Map as TiledMap;
-use nalgebra::vector;
+use nalgebra::{vector, Vector2};
 use rapier2d::{
     dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet},
     geometry::{ColliderBuilder, ColliderHandle, ColliderSet},
@@ -185,9 +185,11 @@ impl Character {
         }
 
         // move the player
-        if !self.is_knockback_stunned() {
-            let body = &mut physics.bodies[self.body_handle.unwrap()];
+        let body = &mut physics.bodies[self.body_handle.unwrap()];
 
+        let (move_acc, braking_acc) = if self.is_knockback_stunned() {
+            (Vector2::zeros(), Vector2::zeros())
+        } else {
             let move_acc = self.input_direction * self.acceleration;
             let move_acc = vector![move_acc.x, move_acc.y];
 
@@ -196,13 +198,15 @@ impl Character {
                 (self.input_direction - vel_dir) * body.linvel().magnitude() * self.braking;
             let braking_acc = vector![braking_acc.x, braking_acc.y];
 
-            let knockback = vector![self.accumulated_knockback.x, self.accumulated_knockback.y];
-            self.accumulated_knockback = Vec2::ZERO;
+            (move_acc, braking_acc)
+        };
 
-            let dt = get_frame_time();
-            let new_linvel = body.linvel() + move_acc * dt + braking_acc * dt + knockback;
-            body.set_linvel(new_linvel, true);
-        }
+        let knockback = vector![self.accumulated_knockback.x, self.accumulated_knockback.y];
+        self.accumulated_knockback = Vec2::ZERO;
+
+        let dt = get_frame_time();
+        let new_linvel = body.linvel() + move_acc * dt + braking_acc * dt + knockback;
+        body.set_linvel(new_linvel, true);
 
         // latch facing direction on nonzero input direction
         if self.input_direction.x > 0. {
