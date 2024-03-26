@@ -112,23 +112,23 @@ pub const _MONSTER_PIPE_OPEN_TILE_ID: u32 = 20;
 pub const POOL_EMPTY_TILE_ID: u32 = 31;
 pub const _POOL_FULL_TILE_ID: u32 = 32;
 
-pub const PLAYER_ACCELERATION: f32 = 48.;
+pub const PLAYER_ACCELERATION: f32 = 55.;
 pub const PLAYER_BRAKING: f32 = 10.;
 pub const PLAYER_FRICTION: f32 = 0.;
 pub const PLAYER_FRICTION_COMBINE_RULE: CoefficientCombineRule = CoefficientCombineRule::Min;
-pub const PLAYER_LINEAR_DAMPING: f32 = 2.;
+pub const PLAYER_LINEAR_DAMPING: f32 = 2.2;
 pub const PLAYER_MASS: f32 = 100.;
 pub const PLAYER_RADIUS: f32 = 0.5;
 pub const PLAYER_RESTITUTION: f32 = 0.5;
-pub const PLAYER_SPRITE_ID: u32 = 85 + 27;
+pub const PLAYER_SPRITE_ID: u32 = 112;
 pub const PLAYER_MAX_HEALTH: u32 = 5;
 
-pub const GUARD_ACCELERATION: f32 = 24.;
+pub const GUARD_ACCELERATION: f32 = 30.;
 pub const GUARD_BRAKING: f32 = 10.;
 pub const GUARD_FRICTION: f32 = 0.;
 pub const GUARD_FRICTION_COMBINE_RULE: CoefficientCombineRule = CoefficientCombineRule::Min;
-pub const GUARD_LINEAR_DAMPING: f32 = 2.5;
-pub const GUARD_MASS: f32 = 100.;
+pub const GUARD_LINEAR_DAMPING: f32 = 2.;
+pub const GUARD_MASS: f32 = 200.;
 pub const GUARD_RADIUS: f32 = 0.5;
 pub const GUARD_RESTITUTION: f32 = 0.5;
 pub const GUARD_SPRITE_ID: u32 = 96;
@@ -145,7 +145,7 @@ pub const ATTACK_COOLDOWN: f64 = 0.4;
 pub const ATTACK_DURATION: f64 = 0.1;
 
 pub const PLAYER_GUARD_KNOCKBACK: f32 = 32.;
-pub const PLAYER_ATTACK_KNOCKBACK: f32 = 64.;
+pub const PLAYER_ATTACK_KNOCKBACK: f32 = 45.;
 pub const GUARD_ALERT_DISTANCE: f32 = 10.;
 pub const PLAYER_ATTACK_RADIUS: f32 = 1.6;
 
