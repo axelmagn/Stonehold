@@ -1,0 +1,11 @@
+target/wasm32-unknown-unknown/release/stonehold.wasm
+assets/kenney_tiny-dungeon/Tilemap/tilemap_packed.png
+assets/kenney_impact-sounds/Audio/impactBell_heavy_002.ogg
+assets/kenney_impact-sounds/Audio/impactPunch_heavy_001.ogg
+assets/kenney_interface-sounds/Audio/click_004.ogg
+assets/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI00.ogg
+assets/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI07.ogg
+assets/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI10.ogg
+assets/kenney_rpg-audio/Audio/doorClose_1.ogg
+assets/tiled/export/sandbox01.tmj
+assets/tiled/export/sandbox03.tmj
