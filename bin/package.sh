@@ -8,8 +8,8 @@ rm -rf "${PACKAGE_DIR}"
 mkdir -p "${PACKAGE_DIR}"
 
 while read f; do
-  mkdir -p "${PACKAGE_DIR}/$(dirname $f)"
+  mkdir -p "${PACKAGE_DIR}/$(dirname "$f")"
   cp "$f" "${PACKAGE_DIR}/$f"
 done < manifest.txt
 
-zip -d "${PACKAGE_DIR}.zip" "${PACKAGE_DIR}"
+zip -r "${PACKAGE_DIR}.zip" "${PACKAGE_DIR}"
